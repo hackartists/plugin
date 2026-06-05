@@ -13,13 +13,11 @@ pub fn provide_auth_context() -> UseAuthContext {
 // 2. use_{name}_context_provider — use_context_provider + use_loader + use_effect
 pub fn use_auth_context_provider() -> UseAuthContext {
     let ctx = use_context_provider(|| UseAuthContext { user: Signal::new(None) });
-    #[cfg(feature = "web")]
-    {
-        let me = use_loader(|| async move { get_me_handler().await });
-        use_effect(move || {
-            if let Some(Ok(resp)) = me.read() { ctx.user.set(resp.user); }
-        });
-    }
+    // Hooks must be called unconditionally — never wrap in #[cfg(feature)].
+    let me = use_loader(|| async move { get_me_handler().await });
+    use_effect(move || {
+        if let Some(Ok(resp)) = me.read() { ctx.user.set(resp.user); }
+    });
     ctx
 }
 
@@ -36,7 +34,7 @@ pub fn consume_auth_context() -> UseAuthContext {
 
 ## Hook Rules and When to Use Each
 
-Dioxus hooks must be called **unconditionally at the top level** of a component or hook function. They cannot be called inside closures, `if` blocks, loops, or `spawn`.
+Dioxus hooks must be called **unconditionally at the top level** of a component or hook function. They cannot be called inside closures, `if` blocks, loops, `spawn`, or `#[cfg(...)]` attributes.
 
 | Function | Hook? | Call site |
 |----------|-------|-----------|
@@ -185,6 +183,7 @@ pub fn use_my_assets_context_provider() -> UseMyAssetsContext {
 | `consume_auth_context()` in component body | Use `use_auth_context()` — hook version |
 | `use_auth_context()` inside `spawn` | Use `consume_auth_context()` — non-hook |
 | `use_auth_context()` inside a closure/if/loop | Move hook call to component top-level |
+| Hook inside `#[cfg(feature = "web")]` | Remove cfg — hooks must run unconditionally on all targets |
 | `&mut self` on methods | Use `&self` — Signal is interior mutable |
 | Providing context twice | Second call overwrites — provide exactly once |
 | Missing signal read in `use_effect` | Effect won't subscribe — read inside closure |
