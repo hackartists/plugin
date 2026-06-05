@@ -13,49 +13,50 @@ pub struct User {
 // ── Context struct ────────────────────────────────────────────────────────
 // Always use DioxusController — never manually derive Clone + Copy.
 // DioxusController generates Clone + Copy and signal accessor boilerplate.
+// user==None before hydrated==true does NOT mean "signed out".
 #[derive(Clone, Copy, DioxusController)]
 pub struct UseAuthContext {
     pub user: Signal<Option<User>>,
-    /// True once the first /api/auth/me call resolves (ok or err).
-    /// Never treat user==None as "signed out" before this is true.
     pub hydrated: Signal<bool>,
 }
 
 // ── 1. provide_{name}_context ─────────────────────────────────────────────
-// Pure provider: no hooks, no effects. Use for testing or nested re-provides.
+// Wraps Dioxus provide_context() — not a hook.
+// Can be called during rendering without hook constraints (e.g. conditional provides).
 pub fn provide_auth_context() -> UseAuthContext {
-    use_context_provider(|| UseAuthContext {
+    provide_context(UseAuthContext {
         user: Signal::new(None),
         hydrated: Signal::new(false),
     })
 }
 
 // ── 2. use_{name}_context_provider ────────────────────────────────────────
-// Hook: provides the context AND wires up reactive behavior.
+// Hook: provides the context AND spawns any async initialization work.
 // Call ONCE at the component tree root (App or a top-level layout).
 pub fn use_auth_context_provider() -> UseAuthContext {
     let ctx = provide_auth_context();
 
-    // Web-only hydration: fire get_me on mount, update context from result.
+    // Spawn async work directly — no use_effect wrapper needed for one-time init.
+    // Web-only: hydrate user from session cookie on first mount.
     #[cfg(feature = "web")]
-    use_effect(move || {
-        spawn(async move {
-            // let resp = get_me_handler().await;
-            // if let Ok(r) = resp { ctx.user.set(r.user); }
-            ctx.hydrated.set(true);
-        });
+    spawn(async move {
+        // let resp = get_me_handler().await;
+        // if let Ok(r) = resp { ctx.user.set(r.user); }
+        ctx.hydrated.set(true);
     });
 
     ctx
 }
 
 // ── 3. consume_{name}_context ─────────────────────────────────────────────
-// Read the context anywhere below the provider in the tree.
+// Wraps Dioxus consume_context() — not a hook.
+// Can be called anywhere the Dioxus runtime is active: components, spawn, event handlers.
 pub fn consume_auth_context() -> UseAuthContext {
-    use_context::<UseAuthContext>()
+    consume_context::<UseAuthContext>()
 }
 
 // ── Methods ───────────────────────────────────────────────────────────────
+// Use &self (not &mut self) — Signal fields use interior mutability.
 impl UseAuthContext {
     pub fn is_signed_in(&self) -> bool {
         self.user.read().is_some()
@@ -65,7 +66,7 @@ impl UseAuthContext {
         self.user.read().as_ref().map(|u| u.display_name.clone())
     }
 
-    pub async fn sign_out(&mut self) {
+    pub async fn sign_out(&self) {
         // logout_handler().await.ok();
         self.user.set(None);
     }
@@ -75,8 +76,7 @@ impl UseAuthContext {
 #[component]
 pub fn App() -> Element {
     use_auth_context_provider();
-    // other providers that depend on auth come after:
-    // use_my_assets_context_provider();
+    use_my_assets_context_provider(); // depends on auth, so comes after
     rsx! { div { "app content" } }
 }
 
@@ -98,7 +98,7 @@ pub fn UserMenu() -> Element {
     }
 }
 
-// ── Second context: shows how provide_ and use_ compose ───────────────────
+// ── Second context: shows reactive effect that depends on another context ──
 #[derive(Clone, Copy, DioxusController)]
 pub struct UseMyAssetsContext {
     pub assets: Signal<Option<Vec<String>>>,
@@ -106,7 +106,7 @@ pub struct UseMyAssetsContext {
 }
 
 pub fn provide_my_assets_context() -> UseMyAssetsContext {
-    use_context_provider(|| UseMyAssetsContext {
+    provide_context(UseMyAssetsContext {
         assets: Signal::new(None),
         loaded: Signal::new(false),
     })
@@ -116,9 +116,10 @@ pub fn use_my_assets_context_provider() -> UseMyAssetsContext {
     let ctx = provide_my_assets_context();
     let auth = consume_auth_context();
 
-    // Flush cache when the signed-in user changes
+    // Flush cache when the signed-in user changes.
+    // Must read auth.user inside the closure to subscribe to it.
     use_effect(move || {
-        let _ = auth.user.read();   // subscribe
+        let _ = auth.user.read();    // subscribe
         ctx.assets.set(None);
         ctx.loaded.set(false);
     });
@@ -127,5 +128,5 @@ pub fn use_my_assets_context_provider() -> UseMyAssetsContext {
 }
 
 pub fn consume_my_assets_context() -> UseMyAssetsContext {
-    use_context::<UseMyAssetsContext>()
+    consume_context::<UseMyAssetsContext>()
 }

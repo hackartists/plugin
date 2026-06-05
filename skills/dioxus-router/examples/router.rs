@@ -1,6 +1,5 @@
 // Example: full Route enum with nested layouts and auth guard
-use dioxus::prelude::*;
-use dioxus_router::prelude::*;
+use dioxus::prelude::*;  // re-exports all router items (Routable, Router, Link, Outlet, etc.)
 
 // ── Route enum ────────────────────────────────────────────────────────────
 #[derive(Debug, Clone, Routable, PartialEq)]

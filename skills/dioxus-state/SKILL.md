@@ -1,6 +1,6 @@
 ---
 name: dioxus-state
-description: Use when managing reactive state in Dioxus with use_signal, use_resource, use_effect, use_memo, GlobalSignal, or implementing a custom use_loader hook for server data fetching.
+description: Use when managing reactive state in Dioxus with use_signal, use_resource, use_action, use_effect, use_memo, GlobalSignal, or implementing a custom use_loader hook for server data fetching.
 ---
 
 # dioxus-state: Reactive State in Dioxus
@@ -10,10 +10,10 @@ All reactive state is `Signal<T>`. Signals are `Copy` — pass them into closure
 ## Signals
 
 ```rust
-let count = use_signal(|| 0_i32);
+let mut count = use_signal(|| 0_i32);
 
 // Read (subscribes current scope)
-let val: i32 = count();          // or count.read().clone()
+let val: i32 = count();          // or *count.read()
 // Read without subscribing
 let val: i32 = *count.peek();
 // Write
@@ -22,53 +22,89 @@ count += 1;
 *count.write() = 42;
 ```
 
-## use_resource — Async Data Fetching
+## use_resource — Reactive Data Fetching (auto-runs)
+
+Runs on mount and re-runs when any signal read inside the closure changes.
 
 ```rust
-let data = use_resource(|| async move {
-    fetch_user(id).await
+let mut revision = use_signal(|| "main");
+let data = use_resource(move || async move {
+    fetch_data(revision()).await  // re-runs when revision changes
 });
 
-// In render:
-match data.read().as_ref() {
-    None => rsx! { "Loading..." },
-    Some(Err(e)) => rsx! { "Error: {e}" },
-    Some(Ok(user)) => rsx! { "{user.name}" },
+// In render — match the full Option<Result<T, E>>:
+match &*data.read_unchecked() {
+    None             => rsx! { "Loading..." },
+    Some(Err(e))     => rsx! { "Error: {e}" },
+    Some(Ok(result)) => rsx! { "{result}" },
 }
 
-// Reload
-data.restart();
+data.restart();   // force reload
+data.value()      // ReadSignal<Option<T>>
+data.pending()    // true while in-flight
 ```
+
+**Use `use_resource` for**: loading data to display, reactive queries tied to signals.
+
+## use_action — Mutations (triggered by user events)
+
+Runs only when explicitly called (button clicks, form submits). Auto-cancels previous in-flight call.
+
+```rust
+let mut save = use_action(save_to_database);
+
+rsx! {
+    button { onclick: move |_| save.call(form_data.clone()), "Save" }
+
+    if save.pending() { p { "Saving..." } }
+
+    if let Some(result) = save.value() {
+        match result {
+            Ok(signal) => rsx! { p { "Saved: {signal}" } },
+            Err(err)   => rsx! { p { "Error: {err}" } },
+        }
+    }
+}
+
+save.reset();   // cancel + clear
+save.cancel();  // cancel without clearing
+```
+
+**Use `use_action` for**: mutations, form submits, any async work triggered by user events.
 
 ## use_loader — Typed Wrapper (project pattern)
 
-The `use_loader` hook wraps `use_resource` to provide a cleaner API:
+Wraps `use_resource` with a cleaner API for one-shot server data:
 
 ```rust
 let me = use_loader(|| async move { get_me_handler().await });
 
-// In effect or render:
-if let Some(result) = me.read() {
-    if let Ok(resp) = result {
-        user.set(resp.user);
-    }
-}
-me.pending()   // true while in-flight
-me.value()     // Some(T) on success, None otherwise
+me.pending()          // true while in-flight
+me.value()            // Some(T) on success, None otherwise
+me.read()             // Option<Result<T, E>>
 ```
 
-Use `use_loader` for read-side hydration (data on mount). Mutations stay as direct `handler().await` calls in event handlers.
+Use `use_loader` for read-side hydration. Mutations stay as direct `handler().await` in event handlers.
 
 ## use_effect — Reactive Side Effects
 
-Runs when any signal read inside the closure changes:
+Runs after render when any signal read inside the closure changes:
 
 ```rust
-let auth = use_auth_context();
+let mut count = use_signal(|| 0);
+let mut name = use_signal(|| "world".to_string());
 
+// Re-runs whenever count OR name changes
 use_effect(move || {
-    let _ = auth.user.read();    // subscribe — re-runs when user changes
-    ctx.assets.set(None);        // flush derived cache
+    println!("greeting: hello, {name} — count is {count}");
+});
+```
+
+Correct subscription pattern — always read the signal inside the closure:
+```rust
+use_effect(move || {
+    let _ = auth.user.read();    // MUST read here to subscribe
+    assets_ctx.assets.set(None); // flush derived state
 });
 ```
 
@@ -76,41 +112,48 @@ use_effect(move || {
 
 ```rust
 let doubled = use_memo(move || count() * 2);
-// doubled() re-computes only when count changes
+
+// Call to read — doubled() in RSX
+rsx! { p { "{doubled()}" } }
 ```
 
-**Gotcha:** Don't use memo values in attributes — they don't subscribe properly:
+**Gotcha:** Passing a memo handle (not called) to an attribute breaks reactivity:
 
 ```rust
-// BAD
+// BAD — passes the memo handle itself, not the value
 let style = use_memo(move || format!("color: {}", color()));
 rsx! { div { style: style } }
 
-// GOOD — read signal directly in RSX
+// GOOD — call the signal directly in RSX
 rsx! { div { style: format!("color: {}", color()) } }
 ```
+
+Memos compose: derive from other memos or signals freely.
 
 ## GlobalSignal — App-Level State
 
 ```rust
-static THEME: GlobalSignal<Theme> = GlobalSignal::new(|| Theme::Light);
+use dioxus::prelude::*;
+
+static COUNT: GlobalSignal<i32> = Signal::global(|| 0);
+static DOUBLED: GlobalMemo<i32> = Memo::global(|| COUNT() * 2);
 
 // Read / write from anywhere (no hook required)
-let t = THEME.read();
-THEME.set(Theme::Dark);
+*COUNT.write() += 1;
+let n = COUNT();
 ```
 
-## use_coroutine — Background Tasks
+`Signal::global(|| initial)` — correct syntax (not `GlobalSignal::new`)
+
+## use_future — Infinite Background Tasks
 
 ```rust
-let tx = use_coroutine(|mut rx: UnboundedReceiver<Msg>| async move {
-    while let Some(msg) = rx.next().await {
-        match msg { Msg::Reload => { /* ... */ } }
+use_future(move || async move {
+    loop {
+        if running() { count += 1; }
+        async_std::task::sleep(Duration::from_millis(400)).await;
     }
 });
-
-// Send from event handler
-tx.send(Msg::Reload);
 ```
 
 ## Quick Reference
@@ -121,16 +164,28 @@ tx.send(Msg::Reload);
 | Read (reactive) | `sig()` or `*sig.read()` |
 | Read (no subscribe) | `*sig.peek()` |
 | Write | `sig.set(v)` / `*sig.write() = v` / `sig += 1` |
-| Async resource | `use_resource(\|\| async move { ... })` |
-| Derived value | `use_memo(move \|\| expr)` |
+| Async resource (auto) | `use_resource(move \|\| async move { ... })` |
+| Mutation (on demand) | `use_action(server_fn)` then `action.call(args)` |
+| Derived value | `use_memo(move \|\| expr)` then `memo()` |
 | Side effect | `use_effect(move \|\| { ... })` |
-| App-level | `static X: GlobalSignal<T> = GlobalSignal::new(\|\| ...)` |
+| App-level signal | `static X: GlobalSignal<T> = Signal::global(\|\| ...)` |
+| App-level memo | `static X: GlobalMemo<T> = Memo::global(\|\| ...)` |
+
+## use_action vs use_resource
+
+| | `use_action` | `use_resource` |
+|---|---|---|
+| **Runs** | When you call it | On mount + dependency change |
+| **Good for** | Mutations, button clicks, form submits | Loading data to display |
+| **Cancellation** | Auto-cancels previous call | Restarts on dependency change |
 
 ## Common Mistakes
 
 | Mistake | Fix |
 |---------|-----|
 | `sig.write()` during render | Causes infinite loop — use `.set()` in effects/handlers |
-| Memo in attribute | Direct signal read in RSX instead |
-| Missing `move` in closures | All reactive closures must own their captures |
-| Calling `use_loader` in event handler | Only call hooks at component top-level; use `handler().await` in handlers |
+| Memo handle in attribute (not called) | Call the memo: `memo()` not `memo` |
+| Missing signal read in `use_effect` | Effect won't subscribe — read inside the closure |
+| `GlobalSignal::new(\|\| ...)` | Use `Signal::global(\|\| ...)` |
+| `use_resource` for button click | Use `use_action` for user-triggered mutations |
+| Calling hooks inside event handlers | Hooks at component top-level only; use `.await` in handlers |

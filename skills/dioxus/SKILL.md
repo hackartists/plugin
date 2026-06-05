@@ -30,11 +30,11 @@ by-macros      = { workspace = true }          # #[get]/#[post] server fns
 manganis       = { workspace = true }          # asset!() macro
 
 [features]
-default  = ["web", "server", "fullstack"]
-web      = ["dioxus/web", ...]
-server   = ["fullstack", "dioxus/server", "dep:tokio", "dep:axum", ...]
+default   = ["web", "server", "fullstack"]
+web       = ["dioxus/web"]          # add wasm-bindgen, gloo-net, etc. as needed
+server    = ["fullstack", "dioxus/server"]  # add tokio, axum, aws-sdk-* as needed
 fullstack = ["dioxus/fullstack"]
-desktop  = ["dioxus/desktop", "dep:reqwest", "dep:tokio", ...]
+desktop   = ["dioxus/desktop"]      # add reqwest, tokio as needed
 ```
 
 ## App Entry Point Pattern

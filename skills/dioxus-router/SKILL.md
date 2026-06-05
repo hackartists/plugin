@@ -93,7 +93,7 @@ rsx! {
 ## Navigation
 
 ```rust
-use dioxus::router::prelude::*;
+use dioxus::prelude::*;  // re-exports all router items
 
 // Declarative link
 rsx! {
