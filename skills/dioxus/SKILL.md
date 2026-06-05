@@ -1,104 +1,98 @@
 ---
 name: dioxus
-description: Use when starting a new Dioxus project, scaffolding a fullstack Rust web app, setting up Cargo.toml features, structuring app entry point, or needing an overview of which dioxus-* skills to invoke for specific patterns.
+description: Use when building any Dioxus (Rust) application — new project setup, context providers, routing, server functions, reactive state, signals, or any cross-cutting pattern. Load this skill for all Dioxus work.
 ---
 
-# Dioxus Hub
+# Dioxus
 
-Dioxus is a Rust framework for fullstack web/desktop apps. This hub covers project setup and entry-point structure. For deep-dive patterns, invoke the satellite skills listed below.
+Dioxus is a Rust framework for fullstack web/desktop apps. All patterns live in this skill.
 
-## Satellite Skills
+## Reference Files
 
-| Task | Skill |
-|------|-------|
-| Context providers / global services (use_*_context_provider, consume_*_context) | `hackartist-plugins:dioxus-context` |
-| Routing, layouts, auth guards | `hackartist-plugins:dioxus-router` |
-| Server functions (`#[get]`/`#[post]`) | `hackartist-plugins:dioxus-server` |
-| Signals, state, effects, resources | `hackartist-plugins:dioxus-state` |
-| i18n / translations | `hackartist-plugins:dioxus-translate` |
-| Dioxus 0.5+ syntax changes | `hackartist-plugins:dioxus-knowledge-patch` |
+| Topic | File |
+|-------|------|
+| Project setup, Cargo.toml, app entry point | `references/project-setup.md` |
+| Context providers (`provide_context`, `consume_context`) | `references/context.md` |
+| Routing, layouts, auth guards, navigation | `references/router.md` |
+| Server functions (`#[get]`/`#[post]`), extractors | `references/server.md` |
+| Signals, `use_resource`, `use_action`, `use_effect`, `use_memo` | `references/state.md` |
 
-When doing comprehensive planning (new project, multi-feature work), also invoke all satellite skills above for full pattern coverage.
+## Quick Reference
 
-## Cargo.toml Feature Flags
-
-```toml
-[dependencies]
-dioxus         = { workspace = true }          # features enabled per-target
-dioxus-translate = { workspace = true }
-by-macros      = { workspace = true }          # #[get]/#[post] server fns
-manganis       = { workspace = true }          # asset!() macro
-
-[features]
-default   = ["web", "server", "fullstack"]
-web       = ["dioxus/web"]          # add wasm-bindgen, gloo-net, etc. as needed
-server    = ["fullstack", "dioxus/server"]  # add tokio, axum, aws-sdk-* as needed
-fullstack = ["dioxus/fullstack"]
-desktop   = ["dioxus/desktop"]      # add reqwest, tokio as needed
-```
-
-## App Entry Point Pattern
+### Imports
 
 ```rust
-// src/app.rs
+use dioxus::prelude::*;         // everything: signals, hooks, router, rsx, spawn, …
+use by_macros::DioxusController; // context struct derive
+```
+
+### App Entry Point
+
+```rust
 #[component]
 pub fn App() -> Element {
-    // 1. wire up context providers at root — order matters when one reads another
-    ThemeService::init();
-    use_auth_context_provider();           // UseAuthContext
-    use_my_assets_context_provider();      // reads UseAuthContext, so comes after
-    use_popup_context_provider();          // UsePopupContext
-
+    use_auth_context_provider();        // context providers at root, deps-first order
+    use_my_assets_context_provider();
     rsx! {
         document::Stylesheet { href: MAIN_CSS }
         Router::<Route> {}
-        PopupZone {}           // renders context-driven overlay
     }
 }
 ```
 
+### Context (→ `references/context.md`)
+
 ```rust
-// src/main.rs (web + server)
-fn main() {
-    dioxus::launch(App);
+#[derive(Clone, Copy, DioxusController)]
+pub struct UseAuthContext { pub user: Signal<Option<User>> }
+
+pub fn provide_auth_context()    -> UseAuthContext { provide_context(UseAuthContext { … }) }
+pub fn use_auth_context_provider() -> UseAuthContext { /* provide + spawn init */ }
+pub fn consume_auth_context()    -> UseAuthContext { consume_context::<UseAuthContext>() }
+```
+
+### Routing (→ `references/router.md`)
+
+```rust
+#[derive(Routable, Clone, Debug, PartialEq)]
+#[rustfmt::skip]
+enum Route {
+    #[layout(NavLayout)]
+        #[route("/")]           HomePage {},
+        #[nest("/console")]
+        #[layout(ConsoleLayout)]
+            #[route("")]        ConsolePage {},
+        #[end_layout]
+        #[end_nest]
+    #[end_layout]
 }
 ```
 
-## Directory Convention
+### State (→ `references/state.md`)
 
-```
-src/
-  app.rs            App component — providers + Router
-  route.rs          Route enum
-  assets.rs         asset!() constants
-  features/
-    auth/
-      mod.rs        pub use re-exports
-      context.rs    UseAuthContext + use_init_auth/use_auth_context
-      controllers/  #[get]/#[post] server functions
-      types.rs      shared request/response/error types
-      extractors.rs (server-only) axum FromRequestParts impls
-      services.rs   (server-only) external API calls
-      i18n.rs       translate! struct
-  pages/
-    home/
-      mod.rs
-      page.rs
-      i18n.rs
-  components/       shared UI primitives
-  popup/            PopupService + PopupZone
-  hooks/            use_loader, use_sleep, ...
-  theme/            ThemeService
-  config/           server config (env vars)
-  types/            cross-cutting types (EntityType, Partition)
+```rust
+let mut count = use_signal(|| 0);          // local state
+let data  = use_resource(|| async move {}); // auto-runs, re-runs on dep change
+let mut save = use_action(server_fn);      // runs on demand (mutations)
+use_effect(move || { let _ = sig.read(); });// side effects, subscribes to signals
+let memo  = use_memo(move || count() * 2); // derived; read as memo()
+static N: GlobalSignal<i32> = Signal::global(|| 0); // app-level
 ```
 
-## Quick Reference
+### Server Functions (→ `references/server.md`)
 
-| Operation | Syntax |
-|-----------|--------|
-| Launch app | `dioxus::launch(App)` |
-| Render assets | `asset!("/assets/logo.png")` |
-| Document head | `document::Stylesheet`, `document::Script`, `document::Meta` |
-| Conditional compile | `#[cfg(feature = "server")]` / `#[cfg(feature = "web")]` |
-| Provider order | Init providers top-down; readers after writers |
+```rust
+#[get("/api/resource")]
+pub async fn get_resource_handler() -> Result<Response> { … }
+
+#[post("/api/resource", auth: AuthUser)]  // auth is a server-only extractor
+pub async fn create_resource_handler(body: CreateRequest) -> Result<Response> { … }
+```
+
+## i18n
+
+See skill `hackartist-plugins:dioxus-translate` for the `translate!` macro and `#[derive(Translate)]`.
+
+## Dioxus 0.5+ Syntax
+
+See skill `hackartist-plugins:dioxus-knowledge-patch` for signals replacing `use_state`, new RSX patterns, asset!(), stores.
