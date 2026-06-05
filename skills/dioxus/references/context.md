@@ -10,11 +10,16 @@ pub fn provide_auth_context() -> UseAuthContext {
     provide_context(UseAuthContext { user: Signal::new(None) })
 }
 
-// 2. use_{name}_context_provider — use_context_provider() hook — App/layout root
+// 2. use_{name}_context_provider — use_context_provider + use_loader + use_effect
 pub fn use_auth_context_provider() -> UseAuthContext {
     let ctx = use_context_provider(|| UseAuthContext { user: Signal::new(None) });
     #[cfg(feature = "web")]
-    spawn(async move { /* one-time init */ });
+    {
+        let me = use_loader(|| async move { get_me_handler().await });
+        use_effect(move || {
+            if let Some(Ok(resp)) = me.read() { ctx.user.set(resp.user); }
+        });
+    }
     ctx
 }
 

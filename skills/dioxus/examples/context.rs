@@ -31,18 +31,27 @@ pub fn provide_auth_context() -> UseAuthContext {
 }
 
 // ── 2. use_{name}_context_provider ────────────────────────────────────────
-// Hook (use_context_provider). Call ONCE at App root or a top-level layout.
-// Provides the context and spawns any one-time async initialization.
+// Hook (use_context_provider + use_loader + use_effect).
+// Call ONCE at App root or a top-level layout.
 pub fn use_auth_context_provider() -> UseAuthContext {
     let ctx = use_context_provider(|| UseAuthContext {
         user: Signal::new(None),
     });
 
+    // use_loader fires get_me_handler on mount (web only).
+    //   me.read() → None  : still in-flight
+    //   me.read() → Some(Ok(resp)) : success
+    //   me.read() → Some(Err(_))   : failed / not signed in (silent)
+    // use_effect subscribes to me and copies the resolved user into ctx.user.
     #[cfg(feature = "web")]
-    spawn(async move {
-        // let resp = get_me_handler().await;
-        // if let Ok(r) = resp { ctx.user.set(r.user); }
-    });
+    {
+        let me = use_loader(|| async move { get_me_handler().await });
+        use_effect(move || {
+            if let Some(Ok(resp)) = me.read() {
+                ctx.user.set(resp.user);
+            }
+        });
+    }
 
     ctx
 }
