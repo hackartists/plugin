@@ -1,39 +1,68 @@
 ---
 name: dioxus-context
-description: Use when adding a global service or shared state to a Dioxus app via use_context_provider/use_context, creating a feature context struct, writing use_init_xxx or use_xxx_context hooks, or implementing reactive side effects tied to context signals.
+description: Use when adding a global service or shared state to a Dioxus app, creating a feature context struct with DioxusController, writing use_{name}_context_provider / consume_{name}_context / provide_{name}_context hooks, or implementing reactive side effects tied to context signals.
 ---
 
 # dioxus-context: Context Providers in Dioxus
 
 Context provides app-wide state without prop-drilling. Provide once at root; read anywhere in the tree.
 
+## Three Required Functions Per Context
+
+Every context exposes exactly these three functions:
+
+```rust
+// 1. use_{name}_context_provider — hook called at App root (or layout root)
+//    Sets up the context AND any reactive effects/loaders. Must be inside a component.
+pub fn use_auth_context_provider() -> UseAuthContext { ... }
+
+// 2. provide_{name}_context — bare provider with no hooks
+//    Use when you need to create the context without hook setup (e.g. tests, nested re-provides).
+pub fn provide_auth_context() -> UseAuthContext { ... }
+
+// 3. consume_{name}_context — read the context anywhere in the tree
+pub fn consume_auth_context() -> UseAuthContext { ... }
+```
+
 ## Core Pattern
 
 ```rust
-// 1. Define a Copy context struct — Signal fields make it reactive
-#[derive(Clone, Copy)]
+use by_macros::DioxusController;
+use dioxus::prelude::*;
+
+// Always derive DioxusController — never manually derive Clone + Copy
+#[derive(Clone, Copy, DioxusController)]
 pub struct UseAuthContext {
     pub user: Signal<Option<User>>,
     pub hydrated: Signal<bool>,
 }
 
-// 2. Provide at root with use_init_xxx()
-pub fn use_init_auth() -> UseAuthContext {
-    let ctx = use_context_provider(|| UseAuthContext {
+// provide_{name}_context: pure provider, no hooks
+pub fn provide_auth_context() -> UseAuthContext {
+    use_context_provider(|| UseAuthContext {
         user: Signal::new(None),
         hydrated: Signal::new(false),
-    });
+    })
+}
 
-    // Reactive side effect that runs when ctx.user changes
+// use_{name}_context_provider: provides + sets up reactive behavior
+pub fn use_auth_context_provider() -> UseAuthContext {
+    let ctx = provide_auth_context();
+
+    #[cfg(feature = "web")]
     use_effect(move || {
-        if ctx.hydrated() { /* ... */ }
+        spawn(async move {
+            // let resp = get_me_handler().await;
+            // if let Ok(r) = resp { ctx.user.set(r.user); }
+            ctx.hydrated.set(true);
+        });
     });
 
     ctx
 }
 
-// 3. Read anywhere with use_xxx_context()
-pub fn use_auth_context() -> UseAuthContext {
+// consume_{name}_context: read from anywhere in the tree
+pub fn consume_auth_context() -> UseAuthContext {
     use_context::<UseAuthContext>()
 }
 ```
@@ -60,59 +89,45 @@ impl UseAuthContext {
 
 | Purpose | Name |
 |---------|------|
-| Context struct | `UseFooContext` or `FooService` |
-| Provider hook | `use_init_foo()` |
-| Consumer hook | `use_foo()` or `use_foo_context()` |
+| Context struct | `UseFooContext` |
+| Hook provider (with effects) | `use_foo_context_provider()` |
+| Bare provider (no hooks) | `provide_foo_context()` |
+| Consumer | `consume_foo_context()` |
 | Context field | `pub bar: Signal<T>` |
+
+## Usage in App Root
+
+```rust
+pub fn App() -> Element {
+    use_auth_context_provider();        // UseAuthContext (provides + hydration effect)
+    use_my_assets_context_provider();   // UseMyAssets — reads auth ctx, so after
+    use_popup_context_provider();       // UsePopupContext
+    rsx! { Router::<Route> {} }
+}
+```
 
 ## Reactive Effects on Context
 
 Use `use_effect` to flush/reset derived state when a signal changes:
 
 ```rust
-let auth = use_auth_context();
+let auth = consume_auth_context();
 use_effect(move || {
     let _ = auth.user.read();    // subscribe to user changes
-    let mut assets = ctx.assets;
-    assets.set(None);            // reset when user changes
+    ctx.assets.set(None);        // reset cache when user changes
 });
-```
-
-## `DioxusController` Derive (by-macros)
-
-```rust
-#[derive(Clone, Copy, DioxusController)]
-pub struct UseAuthContext {
-    pub user: Signal<Option<User>>,
-    pub pending_email: Signal<Option<String>>,
-}
-```
-
-`DioxusController` auto-derives `Clone + Copy` boilerplate and signal accessors. Equivalent to manually deriving `Clone + Copy` with `Signal` fields.
-
-## Multiple Contexts
-
-Call `use_context_provider` once per type at root. Child contexts (e.g., page-level) can use the same pattern at layout level instead of App root.
-
-```rust
-// App root
-pub fn App() -> Element {
-    use_init_auth();        // UseAuthContext
-    use_init_my_assets();   // UseMyAssets — reads auth ctx, so after
-    use_init_popup();       // PopupService
-    rsx! { Router::<Route> {} }
-}
 ```
 
 ## Common Mistakes
 
 | Mistake | Fix |
 |---------|-----|
-| Calling `use_context_provider` in two places | Provide exactly once at root — subsequent calls overwrite |
+| Using `use_init_foo` naming | Use `use_foo_context_provider` / `consume_foo_context` |
+| Manual `#[derive(Clone, Copy)]` | Always use `#[derive(DioxusController)]` instead |
+| Calling `use_context_provider` in two places | Provide exactly once — subsequent calls overwrite |
 | Provider order wrong (reader before writer) | Put providers top-down: deps after what they depend on |
 | Using `Signal::write()` in render | Use `Signal::set()` in effects/handlers, not during render |
-| Forgetting `move` in `use_effect` closure | Closures must own their captures: `use_effect(move \|\| ...)` |
 
 ## Example File
 
-See `examples/context.rs` for a complete feature context with init, consumer hook, and methods.
+See `examples/context.rs` for a complete context with all three functions and methods.

@@ -1,5 +1,6 @@
-// Example: feature context with init hook, consumer hook, and methods
-// Pattern: Clone + Copy struct with Signal fields
+// Example: feature context with the three required functions + methods
+// Naming: use_{name}_context_provider / provide_{name}_context / consume_{name}_context
+use by_macros::DioxusController;
 use dioxus::prelude::*;
 
 // ── Types ─────────────────────────────────────────────────────────────────
@@ -10,10 +11,9 @@ pub struct User {
 }
 
 // ── Context struct ────────────────────────────────────────────────────────
-// Must be Clone + Copy so it can be captured by closures without cloning.
-// Signal<T> is already Copy; add #[derive(DioxusController)] with by-macros
-// or derive Clone + Copy manually.
-#[derive(Clone, Copy)]
+// Always use DioxusController — never manually derive Clone + Copy.
+// DioxusController generates Clone + Copy and signal accessor boilerplate.
+#[derive(Clone, Copy, DioxusController)]
 pub struct UseAuthContext {
     pub user: Signal<Option<User>>,
     /// True once the first /api/auth/me call resolves (ok or err).
@@ -21,35 +21,37 @@ pub struct UseAuthContext {
     pub hydrated: Signal<bool>,
 }
 
-// ── Provider ──────────────────────────────────────────────────────────────
-/// Call once in App root. Returns the context so the caller can chain
-/// use_effect / use_loader against it immediately.
-pub fn use_init_auth() -> UseAuthContext {
-    let ctx = use_context_provider(|| UseAuthContext {
+// ── 1. provide_{name}_context ─────────────────────────────────────────────
+// Pure provider: no hooks, no effects. Use for testing or nested re-provides.
+pub fn provide_auth_context() -> UseAuthContext {
+    use_context_provider(|| UseAuthContext {
         user: Signal::new(None),
         hydrated: Signal::new(false),
-    });
+    })
+}
 
-    // Web-only hydration from session cookie on first mount.
-    // use_effect subscribes to ctx.hydrated so it re-runs if hydrated flips.
+// ── 2. use_{name}_context_provider ────────────────────────────────────────
+// Hook: provides the context AND wires up reactive behavior.
+// Call ONCE at the component tree root (App or a top-level layout).
+pub fn use_auth_context_provider() -> UseAuthContext {
+    let ctx = provide_auth_context();
+
+    // Web-only hydration: fire get_me on mount, update context from result.
     #[cfg(feature = "web")]
-    {
-        use_effect(move || {
-            // spawn returns immediately; the async block runs in the background
-            spawn(async move {
-                // replace with real server-fn call
-                // let resp = get_me_handler().await;
-                // if let Ok(r) = resp { ctx.user.set(r.user); }
-                ctx.hydrated.set(true);
-            });
+    use_effect(move || {
+        spawn(async move {
+            // let resp = get_me_handler().await;
+            // if let Ok(r) = resp { ctx.user.set(r.user); }
+            ctx.hydrated.set(true);
         });
-    }
+    });
 
     ctx
 }
 
-// ── Consumer ──────────────────────────────────────────────────────────────
-pub fn use_auth_context() -> UseAuthContext {
+// ── 3. consume_{name}_context ─────────────────────────────────────────────
+// Read the context anywhere below the provider in the tree.
+pub fn consume_auth_context() -> UseAuthContext {
     use_context::<UseAuthContext>()
 }
 
@@ -69,10 +71,19 @@ impl UseAuthContext {
     }
 }
 
-// ── Usage in a component ───────────────────────────────────────────────────
+// ── App root wires up the provider ────────────────────────────────────────
+#[component]
+pub fn App() -> Element {
+    use_auth_context_provider();
+    // other providers that depend on auth come after:
+    // use_my_assets_context_provider();
+    rsx! { div { "app content" } }
+}
+
+// ── Child components consume ──────────────────────────────────────────────
 #[component]
 pub fn UserMenu() -> Element {
-    let auth = use_auth_context();
+    let auth = consume_auth_context();
 
     if !auth.hydrated() {
         return rsx! { span { "..." } };
@@ -85,4 +96,36 @@ pub fn UserMenu() -> Element {
             button { "Sign in" }
         }
     }
+}
+
+// ── Second context: shows how provide_ and use_ compose ───────────────────
+#[derive(Clone, Copy, DioxusController)]
+pub struct UseMyAssetsContext {
+    pub assets: Signal<Option<Vec<String>>>,
+    pub loaded: Signal<bool>,
+}
+
+pub fn provide_my_assets_context() -> UseMyAssetsContext {
+    use_context_provider(|| UseMyAssetsContext {
+        assets: Signal::new(None),
+        loaded: Signal::new(false),
+    })
+}
+
+pub fn use_my_assets_context_provider() -> UseMyAssetsContext {
+    let ctx = provide_my_assets_context();
+    let auth = consume_auth_context();
+
+    // Flush cache when the signed-in user changes
+    use_effect(move || {
+        let _ = auth.user.read();   // subscribe
+        ctx.assets.set(None);
+        ctx.loaded.set(false);
+    });
+
+    ctx
+}
+
+pub fn consume_my_assets_context() -> UseMyAssetsContext {
+    use_context::<UseMyAssetsContext>()
 }

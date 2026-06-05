@@ -11,7 +11,7 @@ Dioxus is a Rust framework for fullstack web/desktop apps. This hub covers proje
 
 | Task | Skill |
 |------|-------|
-| Context providers / global services | `hackartist-plugins:dioxus-context` |
+| Context providers / global services (use_*_context_provider, consume_*_context) | `hackartist-plugins:dioxus-context` |
 | Routing, layouts, auth guards | `hackartist-plugins:dioxus-router` |
 | Server functions (`#[get]`/`#[post]`) | `hackartist-plugins:dioxus-server` |
 | Signals, state, effects, resources | `hackartist-plugins:dioxus-state` |
@@ -43,11 +43,11 @@ desktop  = ["dioxus/desktop", "dep:reqwest", "dep:tokio", ...]
 // src/app.rs
 #[component]
 pub fn App() -> Element {
-    // 1. init all context providers at root — order matters when one reads another
+    // 1. wire up context providers at root — order matters when one reads another
     ThemeService::init();
-    use_init_auth();           // provides UseAuthContext
-    use_init_my_assets();      // reads UseAuthContext, so comes after
-    use_init_popup();          // provides PopupService
+    use_auth_context_provider();           // UseAuthContext
+    use_my_assets_context_provider();      // reads UseAuthContext, so comes after
+    use_popup_context_provider();          // UsePopupContext
 
     rsx! {
         document::Stylesheet { href: MAIN_CSS }
