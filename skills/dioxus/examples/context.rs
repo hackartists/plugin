@@ -12,37 +12,32 @@ pub struct User {
 
 // ── Context struct ────────────────────────────────────────────────────────
 // Always use DioxusController — never manually derive Clone + Copy.
-// DioxusController generates Clone + Copy and signal accessor boilerplate.
-// user==None before hydrated==true does NOT mean "signed out".
+// user: None  →  not signed in (or initial state before first load)
+// user: Some  →  signed in
 #[derive(Clone, Copy, DioxusController)]
 pub struct UseAuthContext {
     pub user: Signal<Option<User>>,
-    pub hydrated: Signal<bool>,
 }
 
 // ── 1. provide_{name}_context ─────────────────────────────────────────────
 // Wraps Dioxus provide_context() — not a hook.
-// Can be called during rendering without hook constraints (e.g. conditional provides).
 pub fn provide_auth_context() -> UseAuthContext {
     provide_context(UseAuthContext {
         user: Signal::new(None),
-        hydrated: Signal::new(false),
     })
 }
 
 // ── 2. use_{name}_context_provider ────────────────────────────────────────
-// Hook: provides the context AND spawns any async initialization work.
-// Call ONCE at the component tree root (App or a top-level layout).
+// Hook: provides the context AND spawns async initialization.
+// Call ONCE at App root (or layout root).
 pub fn use_auth_context_provider() -> UseAuthContext {
     let ctx = provide_auth_context();
 
-    // Spawn async work directly — no use_effect wrapper needed for one-time init.
-    // Web-only: hydrate user from session cookie on first mount.
+    // Spawn one-time async init — no use_effect needed.
     #[cfg(feature = "web")]
     spawn(async move {
         // let resp = get_me_handler().await;
         // if let Ok(r) = resp { ctx.user.set(r.user); }
-        ctx.hydrated.set(true);
     });
 
     ctx
@@ -50,7 +45,7 @@ pub fn use_auth_context_provider() -> UseAuthContext {
 
 // ── 3. consume_{name}_context ─────────────────────────────────────────────
 // Wraps Dioxus consume_context() — not a hook.
-// Can be called anywhere the Dioxus runtime is active: components, spawn, event handlers.
+// Can be called anywhere the runtime is active: components, spawn, event handlers.
 pub fn consume_auth_context() -> UseAuthContext {
     consume_context::<UseAuthContext>()
 }
@@ -72,22 +67,18 @@ impl UseAuthContext {
     }
 }
 
-// ── App root wires up the provider ────────────────────────────────────────
+// ── App root ──────────────────────────────────────────────────────────────
 #[component]
 pub fn App() -> Element {
     use_auth_context_provider();
-    use_my_assets_context_provider(); // depends on auth, so comes after
+    use_my_assets_context_provider();
     rsx! { div { "app content" } }
 }
 
-// ── Child components consume ──────────────────────────────────────────────
+// ── Consumer component ────────────────────────────────────────────────────
 #[component]
 pub fn UserMenu() -> Element {
     let auth = consume_auth_context();
-
-    if !auth.hydrated() {
-        return rsx! { span { "..." } };
-    }
 
     rsx! {
         if auth.is_signed_in() {
@@ -98,17 +89,15 @@ pub fn UserMenu() -> Element {
     }
 }
 
-// ── Second context: shows reactive effect that depends on another context ──
+// ── Second context: reactive on another context ───────────────────────────
 #[derive(Clone, Copy, DioxusController)]
 pub struct UseMyAssetsContext {
     pub assets: Signal<Option<Vec<String>>>,
-    pub loaded: Signal<bool>,
 }
 
 pub fn provide_my_assets_context() -> UseMyAssetsContext {
     provide_context(UseMyAssetsContext {
         assets: Signal::new(None),
-        loaded: Signal::new(false),
     })
 }
 
@@ -116,12 +105,11 @@ pub fn use_my_assets_context_provider() -> UseMyAssetsContext {
     let ctx = provide_my_assets_context();
     let auth = consume_auth_context();
 
-    // Flush cache when the signed-in user changes.
-    // Must read auth.user inside the closure to subscribe to it.
+    // Flush cache whenever the signed-in user changes.
+    // Read auth.user inside the closure to subscribe.
     use_effect(move || {
-        let _ = auth.user.read();    // subscribe
+        let _ = auth.user.read();
         ctx.assets.set(None);
-        ctx.loaded.set(false);
     });
 
     ctx

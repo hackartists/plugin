@@ -44,7 +44,7 @@ pub fn App() -> Element {
 
 ```rust
 #[derive(Clone, Copy, DioxusController)]
-pub struct UseAuthContext { pub user: Signal<Option<User>> }
+pub struct UseAuthContext { pub user: Signal<Option<User>> }  // None = not signed in
 
 pub fn provide_auth_context()    -> UseAuthContext { provide_context(UseAuthContext { … }) }
 pub fn use_auth_context_provider() -> UseAuthContext { /* provide + spawn init */ }

@@ -10,7 +10,6 @@ Context shares state app-wide without prop-drilling. Provide once at root; read 
 pub fn provide_auth_context() -> UseAuthContext {
     provide_context(UseAuthContext {
         user: Signal::new(None),
-        hydrated: Signal::new(false),
     })
 }
 
@@ -19,12 +18,11 @@ pub fn provide_auth_context() -> UseAuthContext {
 pub fn use_auth_context_provider() -> UseAuthContext {
     let ctx = provide_auth_context();
 
-    // Spawn one-time async work directly — no use_effect wrapper needed
+    // Spawn one-time async init — no use_effect needed.
     #[cfg(feature = "web")]
     spawn(async move {
         // let resp = get_me_handler().await;
         // if let Ok(r) = resp { ctx.user.set(r.user); }
-        ctx.hydrated.set(true);
     });
 
     ctx
@@ -48,9 +46,8 @@ use dioxus::prelude::*;
 #[derive(Clone, Copy, DioxusController)]
 pub struct UseAuthContext {
     pub user: Signal<Option<User>>,
-    /// True once the initial /api/auth/me has resolved (ok or err).
-    /// user==None BEFORE hydrated==true does NOT mean "signed out".
-    pub hydrated: Signal<bool>,
+    // user: None  →  not signed in
+    // user: Some  →  signed in
 }
 ```
 
