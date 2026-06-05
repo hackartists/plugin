@@ -48,10 +48,11 @@ fn UserMenu() -> Element {
     // ✅ Hook — unconditional, top-level
     let auth = use_auth_context();
 
-    // Signal is Copy — capture auth once above, move into closures freely
+    // Signal is Copy — capture once above, move into closures freely.
+    // onclick returns async move directly — no spawn needed.
     rsx! {
         button {
-            onclick: move |_| spawn(async move { auth.sign_out().await; }),
+            onclick: move |_| async move { auth.sign_out().await; },
             "Sign out"
         }
     }
@@ -73,7 +74,22 @@ pub fn use_my_assets_context_provider() -> UseMyAssetsContext {
 }
 ```
 
-### Inside spawn or event closure → use consume
+### onclick / event handlers — `async move` directly, no spawn
+
+```rust
+// ✅ Dioxus event handlers accept async closures directly
+rsx! {
+    button {
+        onclick: move |_| async move { auth.sign_out().await; },
+        "Sign out"
+    }
+}
+
+// ❌ spawn inside onclick is redundant
+onclick: move |_| { spawn(async move { auth.sign_out().await; }); }
+```
+
+### Background task spawned outside a component → use consume
 
 ```rust
 // ❌ Cannot call hooks inside spawn
@@ -81,8 +97,8 @@ spawn(async move {
     let auth = use_auth_context(); // PANIC — hook called outside component
 });
 
-// ✅ Use consume_context instead
-pub fn background_task() {
+// ✅ Use consume_context for explicitly spawned background tasks
+pub fn start_background_task() {
     spawn(async move {
         let auth = consume_auth_context(); // non-hook, safe here
         if auth.is_signed_in() { /* … */ }

@@ -95,10 +95,7 @@ pub fn UserMenu() -> Element {
         if auth.is_signed_in() {
             span { "{auth.display_name().unwrap_or_default()}" }
             button {
-                onclick: move |_| {
-                    // Signal is Copy — auth captured from hook above, no need for consume here
-                    spawn(async move { auth.sign_out().await; });
-                },
+                onclick: move |_| async move { auth.sign_out().await; },
                 "Sign out"
             }
         } else {
