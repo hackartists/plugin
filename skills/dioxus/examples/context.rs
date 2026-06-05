@@ -31,26 +31,17 @@ pub fn provide_auth_context() -> UseAuthContext {
 }
 
 // ── 2. use_{name}_context_provider ────────────────────────────────────────
-// Hook (use_context_provider + use_loader + use_effect).
+// Hook: use_loader first → pass output to use_context_provider as initial value.
 // Call ONCE at App root or a top-level layout.
 pub fn use_auth_context_provider() -> UseAuthContext {
-    let ctx = use_context_provider(|| UseAuthContext {
-        user: Signal::new(None),
-    });
-
-    // use_loader fires get_me_handler on mount.
-    //   me.read() → None           : still in-flight
-    //   me.read() → Some(Ok(resp)) : success → populate ctx.user
-    //   me.read() → Some(Err(_))   : failed / not signed in (silent)
-    // Hooks must be called unconditionally — never wrap in #[cfg(feature)].
+    // 1. Fetch from server. me.read() → None (in-flight) | Some(Ok) | Some(Err)
     let me = use_loader(|| async move { get_me_handler().await });
-    use_effect(move || {
-        if let Some(Ok(resp)) = me.read() {
-            ctx.user.set(resp.user);
-        }
-    });
 
-    ctx
+    // 2. Initialize context with the loader's current value.
+    //    me.value() returns Some(T) on success, None otherwise.
+    use_context_provider(|| UseAuthContext {
+        user: Signal::new(me.value().and_then(|resp| resp.user)),
+    })
 }
 
 // ── 3. use_{name}_context ─────────────────────────────────────────────────

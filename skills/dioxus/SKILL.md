@@ -47,7 +47,7 @@ pub fn App() -> Element {
 pub struct UseAuthContext { pub user: Signal<Option<User>> }  // None = not signed in
 
 pub fn provide_auth_context()      -> UseAuthContext { provide_context(UseAuthContext { … }) }         // non-hook
-pub fn use_auth_context_provider() -> UseAuthContext { use_context_provider(|| …); /* + use_loader + use_effect */ } // hook — App root
+pub fn use_auth_context_provider() -> UseAuthContext { let me = use_loader(|| async move { … }); use_context_provider(|| UseAuthContext { user: Signal::new(me.value()…) }) } // hook — App root
 pub fn use_auth_context()          -> UseAuthContext { use_context::<UseAuthContext>() }                // hook — component body
 pub fn consume_auth_context()      -> UseAuthContext { consume_context::<UseAuthContext>() }            // non-hook — spawn/closures
 ```
