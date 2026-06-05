@@ -5,18 +5,20 @@ Context shares state app-wide without prop-drilling. Provide once at root; read 
 ## Three Required Functions Per Context
 
 ```rust
-// 1. provide_{name}_context — wraps Dioxus provide_context() (not a hook)
-//    Can be called during rendering without hook constraints.
+// 1. provide_{name}_context — wraps provide_context() (not a hook)
+//    Use when providing outside a hook call site (e.g. conditional, nested).
 pub fn provide_auth_context() -> UseAuthContext {
     provide_context(UseAuthContext {
         user: Signal::new(None),
     })
 }
 
-// 2. use_{name}_context_provider — hook: provide + spawn async init
+// 2. use_{name}_context_provider — hook: uses use_context_provider + spawn async init
 //    Call ONCE at App root (or layout root). Must be inside a component.
 pub fn use_auth_context_provider() -> UseAuthContext {
-    let ctx = provide_auth_context();
+    let ctx = use_context_provider(|| UseAuthContext {
+        user: Signal::new(None),
+    });
 
     // Spawn one-time async init — no use_effect needed.
     #[cfg(feature = "web")]
@@ -85,7 +87,7 @@ When one context must react to another's signal, use `use_effect` inside `use_{n
 
 ```rust
 pub fn use_my_assets_context_provider() -> UseMyAssetsContext {
-    let ctx = provide_my_assets_context();
+    let ctx = use_context_provider(|| UseMyAssetsContext { /* … */ });
     let auth = consume_auth_context();  // reads another context
 
     // Flush cache whenever the signed-in user changes

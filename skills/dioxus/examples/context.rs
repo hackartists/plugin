@@ -28,10 +28,12 @@ pub fn provide_auth_context() -> UseAuthContext {
 }
 
 // ── 2. use_{name}_context_provider ────────────────────────────────────────
-// Hook: provides the context AND spawns async initialization.
+// Hook: uses use_context_provider (hook) + spawns async initialization.
 // Call ONCE at App root (or layout root).
 pub fn use_auth_context_provider() -> UseAuthContext {
-    let ctx = provide_auth_context();
+    let ctx = use_context_provider(|| UseAuthContext {
+        user: Signal::new(None),
+    });
 
     // Spawn one-time async init — no use_effect needed.
     #[cfg(feature = "web")]
@@ -102,7 +104,9 @@ pub fn provide_my_assets_context() -> UseMyAssetsContext {
 }
 
 pub fn use_my_assets_context_provider() -> UseMyAssetsContext {
-    let ctx = provide_my_assets_context();
+    let ctx = use_context_provider(|| UseMyAssetsContext {
+        assets: Signal::new(None),
+    });
     let auth = consume_auth_context();
 
     // Flush cache whenever the signed-in user changes.
