@@ -12,6 +12,7 @@ Dioxus is a Rust framework for fullstack web/desktop apps. All patterns live in 
 | Topic | File |
 |-------|------|
 | Project setup, Cargo.toml, app entry point | `references/project-setup.md` |
+| Tailwind CSS setup (dx-cli built-in, no npm) | `references/tailwind.md` |
 | Context providers (`provide_context`, `consume_context`) | `references/context.md` |
 | Routing, layouts, auth guards, navigation | `references/router.md` |
 | Server functions (`#[get]`/`#[post]`), extractors | `references/server.md` |
