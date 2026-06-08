@@ -57,7 +57,7 @@ enum Route {
 ```rust
 #[component]
 fn ConsoleLayout() -> Element {
-    let auth = consume_auth_context();
+    let auth = use_auth_context();
 
     // 1. Wait for hydration — user==None before hydrated is NOT "signed out"
     if !auth.hydrated() {

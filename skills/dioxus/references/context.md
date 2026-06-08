@@ -6,16 +6,16 @@ Context shares state app-wide without prop-drilling. Provide once at root; read 
 
 ```rust
 // 1. provide_{name}_context — provide_context() — NOT a hook
-pub fn provide_auth_context() -> UseAuthContext {
-    provide_context(UseAuthContext { user: Signal::new(None) })
+// NOTE: cannot construct Loader/Memo outside hook context; use use_auth_context_provider() instead.
+pub fn provide_auth_context(ctx: UseAuthContext) -> UseAuthContext {
+    provide_context(ctx)
 }
 
 // 2. use_{name}_context_provider — use_loader first, output into use_context_provider
 pub fn use_auth_context_provider() -> UseAuthContext {
-    let me = use_loader(|| async move { get_me_handler().await });
-    use_context_provider(|| UseAuthContext {
-        user: Signal::new(me.value().and_then(|resp| resp.user)),
-    })
+    let loader = use_loader(|| async move { get_me_handler().await });
+    let user = use_memo(move || loader.value().and_then(|resp| resp.user));
+    use_context_provider(|| UseAuthContext { loader, user })
 }
 
 // 3. use_{name}_context — use_context() hook — component top-level / inside hooks
@@ -98,11 +98,9 @@ spawn(async move {
 });
 
 // ✅ Use consume_context for explicitly spawned background tasks
-pub fn start_background_task() {
-    spawn(async move {
-        let auth = consume_auth_context(); // non-hook, safe here
-        if auth.is_signed_in() { /* … */ }
-    });
+pub async fn start_background_task() {
+    let auth = consume_auth_context(); // non-hook, safe here
+    if auth.is_signed_in() { /* … */ }
 }
 ```
 
@@ -115,8 +113,8 @@ use dioxus::prelude::*;
 // Always derive DioxusController — never manually derive Clone + Copy.
 #[derive(Clone, Copy, DioxusController)]
 pub struct UseAuthContext {
-    pub user: Signal<Option<User>>,
-    // None = not signed in, Some = signed in
+    pub loader: Loader<GetMeResponse>,
+    pub user: Memo<Option<User>>,
 }
 ```
 
@@ -132,7 +130,7 @@ impl UseAuthContext {
 
     pub async fn sign_out(&self) {
         logout_handler().await.ok();
-        self.user.set(None);
+        // user is a Memo — it recomputes from loader automatically on next poll
     }
 }
 ```
