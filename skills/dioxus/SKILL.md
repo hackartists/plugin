@@ -15,6 +15,7 @@ Dioxus is a Rust framework for fullstack web/desktop apps. All patterns live in 
 | Tailwind CSS setup (dx-cli built-in, no npm) | `references/tailwind.md` |
 | Context providers (`provide_context`, `consume_context`) | `references/context.md` |
 | Routing, layouts, auth guards, navigation | `references/router.md` |
+| Page implementation (dir layout, `*Page`, i18n, page context) | `references/page.md` |
 | Server functions (`#[get]`/`#[post]`), extractors | `references/server.md` |
 | Signals, `use_resource`, `use_action`, `use_effect`, `use_memo` | `references/state.md` |
 
@@ -67,6 +68,35 @@ enum Route {
         #[end_layout]
         #[end_nest]
     #[end_layout]
+}
+```
+
+### Page Implementation (→ `references/page.md`)
+
+Everything a page owns lives under `src/pages/{path}/` ({path} mirrors the URL):
+
+```
+src/pages/settings/
+├── mod.rs            # `mod page; pub use page::*;` + submodules
+├── page.rs           # MANDATORY — the `*Page` component (thin; composes children)
+├── i18n.rs           # MANDATORY — translate! { … } for this page's text
+├── context.rs        # RECOMMENDED — shared signals/loaders + API-calling methods
+├── layout.rs         # OPTIONAL — shell + Outlet::<Route> for child routes
+├── components/*.rs    # one component per file (split when rsx! > ~300 lines)
+└── hooks/*.rs         # one hook per file
+```
+
+Rules: page component has a unique name with `Page` suffix; one component/hook per file;
+**components never call server functions directly** — go through a context method or `use_action`.
+A sub-component's own text can be an inline `translate!` block at the **end** of its file; only
+shared text goes in the page `i18n.rs`.
+
+```rust
+#[component]
+pub fn SettingsPage() -> Element {
+    use_settings_context_provider();        // provide page context at the top
+    let tr: SettingsTranslate = use_translate();
+    rsx! { h1 { "{tr.title}" } SettingsProfileCard {} }   // children carry the detail
 }
 ```
 
