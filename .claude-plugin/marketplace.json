@@ -41,7 +41,7 @@
     {
       "name": "understand-anything",
       "source": {
-        "source": "url",
+        "source": "git-subdir",
         "url": "https://github.com/Egonex-AI/Understand-Anything.git",
         "path": "understand-anything-plugin"
       }
@@ -49,7 +49,7 @@
     {
       "name": "agentmemory",
       "source": {
-        "source": "url",
+        "source": "git-subdir",
         "url": "https://github.com/rohitg00/agentmemory.git",
         "path": "plugin"
       }
