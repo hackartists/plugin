@@ -1,0 +1,41 @@
+# Stage 1-2: 펀드 결성 (Fund Formation) & LP 모집 (LP Fundraising)
+
+**Layer**: 펀드 (Fund layer) — 딜을 굴리기 전에 선행하는 운용사 상위 활동.
+**키워드**: 펀드결성, LP모집, 출자, 캐피탈콜, GP/LP, 블라인드펀드, 프로젝트펀드, 운용보수, 성과보수, carry, LPA, 정관, 벤처투자조합, 창투사, PPM, 약정.
+
+## Stage 1: 펀드 결성 (Fund Formation)
+
+VC 운용사(GP)가 투자할 실탄(펀드)을 만드는 단계. 딜을 보기 전에 선행한다.
+
+- **펀드 유형**
+  - **블라인드 펀드(Blind pool fund)** — 특정 투자 대상을 정하지 않고 결성. 투자 전략(섹터/단계/체크사이즈)만 정하고 이후 딜을 소싱.
+  - **프로젝트 펀드(Project fund)** — 특정 자산/딜을 미리 정해두고 그 건에 맞춰 결성(SPV형에 가까움).
+- **펀드 구조 정의 요소**
+  - 결성총액(target commitment), 목표수익률(target IRR), 존속기간(통상 7~10년: 투자기간 3~4년 + 회수기간)
+  - GP 출자금(GP commitment, 통상 총액의 1~5%) — GP의 skin in the game
+  - 최소 출자금(기관 투자자 vs 개인 투자자 기준 상이)
+  - **운용보수(management fee)** — 통상 연 2% 내외, 투자기간엔 결성총액 기준·회수기간엔 투자원금(invested capital) 기준으로 낮아지는 구조가 흔함.
+  - **성과보수(carried interest / carry)** — 통상 이익의 20%. **hurdle rate**(우선수익률, 통상 8%) 이상 수익이 나야 carry 발생하는 구조가 일반적.
+- **법적 문서**: LPA(Limited Partnership Agreement, 국내는 조합 규약/정관) — 펀드의 헌법. 투자 전략, 보수, 의사결정 권한(GP 단독 vs LPAC 승인 필요 사항)을 규정.
+
+## Stage 2: LP 모집 (LP Fundraising)
+
+- **LP(Limited Partner, 출자자) 유형**: 기관(연기금·공제회·보험사·은행), 정책펀드(한국벤처투자 KVIC 모태펀드 매칭출자), 기업(CVC 형태 출자), 개인 고액자산가(HNWI).
+- **프로세스**: PPM(Private Placement Memorandum, 펀드 소개자료) 배포 → LP 미팅/실사(LP도 GP를 실사한다 — 트랙레코드, 팀, 이해상충) → 약정(Subscription Agreement) 체결 → 클로징(1차 클로징 → 파이널 클로징).
+- **캐피탈콜(Capital Call)** — 결성 시 전액 납입이 아니라, 투자 집행 시점마다 약정 비율대로 LP에게 납입을 요청하는 구조.
+- **LPAC(Limited Partner Advisory Committee)** — 주요 LP 대표로 구성되는 자문위원회. 이해상충, LPA 예외 승인 등 핵심 의사결정에 관여.
+- **워터폴(Distribution Waterfall)** — Exit/회수 시 배분 순서: ① 출자원금 반환 → ② hurdle rate만큼 우선수익 → ③ GP catch-up → ④ 잔여이익을 LP/GP가 carry 비율대로 분배.
+
+> **Note**: "LP 대상 정기 성과 리포팅"(펀드 운용 현황을 LP에게 지속적으로 보고하는 활동)은 이 7단계 프레임워크에서 별도 스테이지로 명시돼 있지 않다 — 결성 시점의 LP 모집(Stage 2)과 사후관리(Stage 7, 포트폴리오사 KPI 리포팅)의 중간 어딘가에 걸치는 갭이다. 관련 기획이 나오면 어느 스테이지에도 억지로 끼워맞추지 말고 이 문서에 명시적으로 기록한다.
+
+## Design Checkpoints (설계 체크포인트)
+
+- 이 기능이 **펀드 유형(블라인드/프로젝트)** 에 따라 동작이 달라지는가?
+- 결성 진행 상태(모집중 → 1차 클로징 → 파이널 클로징 → 완료)를 어떻게 표현/전이할 것인가?
+- 운용보수/성과보수/워터폴 계산이 이 기능의 리포팅에 필요한가?
+- LP별 약정액·캐피탈콜 이력·소진율을 추적해야 하는가?
+- 여러 펀드를 운용하는 GP라면, 이 기능은 **펀드 단위**로 스코프되는가 아니면 운용사(워크스페이스) 전체 뷰인가?
+
+## Sources
+
+- [KVCA 벤처투자조합 통합 매뉴얼](https://www.kvca.or.kr/files/download.php?name=%EB%B2%A4%EC%B2%98%ED%88%AC%EC%9E%90%EC%A1%B0%ED%95%A9%ED%86%B5%ED%95%A9%EC%97%85%EB%AC%B4%EB%A7%A4%EB%89%B4%EC%96%BC.pdf) — 투자심의위원회 구성, 결성 실무.
