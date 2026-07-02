@@ -29,6 +29,8 @@
 | 투자설명서 | PPM (Private Placement Memorandum) | LP 모집용 펀드 소개 문서 |
 | 출자약정서 | Subscription agreement | LP의 출자 약정 계약 |
 | 사이드레터 | Side letter | 특정 LP에게만 주는 개별 특약 |
+| 배정 / 스케일백 | Allocation / Scale-back | 초과 청약 시 GP가 클로징에서 LP별 약정액을 조정·축소하는 것. 단일 LP 비중(통상 10~25% 내) 관리 수단 |
+| ERISA 25% 테스트 | ERISA 25% test | (미국) 연금성 자금이 펀드 지분 25% 초과 시 펀드 자산이 plan assets로 취급되어 ERISA 수탁 규제 적용. GP가 연금 LP 합산 비중을 25% 미만으로 관리하는 이유 |
 | 1차 결성 / 최종 결성 | First closing / Final closing | 최소 결성액 도달 시 1차 클로징 후 추가 모집, 마감 시 파이널 클로징 |
 | 출자지분율 | Percentage interest | 약정액(또는 좌수) ÷ 총액 — 캐피탈콜·배분·의결의 pro-rata 기준. 미국식 펀드의 몫 계산 축 |
 | 이퀄라이제이션 | Equalization | 후속 클로징 참여 LP가 기존 LP의 기납입분+이자를 정산해 형평을 맞추는 절차 |
