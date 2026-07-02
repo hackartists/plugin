@@ -19,9 +19,10 @@
 | 한국어 | 영어 | 정의 |
 |---|---|---|
 | 벤처투자조합 | Venture investment fund | 벤처투자법상 결성하는 투자조합(펀드의 법적 그릇) |
-| 결성총액 / 약정총액 | Fund size / Committed capital | LP+GP가 약정한 펀드 총 규모 |
-| GP 출자금 | GP commitment | GP가 자기 돈으로 넣는 출자(통상 1~5%) — skin in the game |
-| 최소 출자금 | Minimum commitment | LP 1인당 최소 약정액(기관/개인 기준 상이) |
+| 결성총액 / 약정총액 | Fund size / Committed capital | LP+GP가 약정한 펀드 총 규모 = 총 출자좌수 × 1좌 금액 |
+| 출자좌수 / 좌(구좌) | Units of contribution | 한국 조합형 펀드의 출자 기본 단위. 규약에 **"출자 1좌의 금액"** 을 정하고 LP/GP는 좌수로 약정. **의결권·배분은 좌수 비례**. 법령·규약 용어는 "좌"("구좌"는 구어). 미국식 펀드는 좌 없이 금액 약정 |
+| GP 출자금 | GP commitment | GP가 자기 돈으로 넣는 출자(통상 1~5%) — skin in the game. 좌수로 표시 |
+| 최소 출자금 | Minimum commitment | LP 1인당 최소 약정액(기관/개인 기준 상이) — 좌 단위 펀드에선 최소 인수 좌수 |
 | 블라인드 펀드 | Blind pool fund | 투자 대상을 정하지 않고 전략만 정해 결성하는 펀드 |
 | 프로젝트 펀드 | Project fund / Deal-by-deal SPV | 특정 딜을 정해두고 결성하는 펀드 |
 | 규약 / 정관 | LPA (Limited Partnership Agreement) | 펀드의 헌법 — 전략·보수·권한·워터폴 규정 |
