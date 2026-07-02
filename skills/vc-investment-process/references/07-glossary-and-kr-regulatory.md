@@ -30,6 +30,8 @@
 | 출자약정서 | Subscription agreement | LP의 출자 약정 계약 |
 | 사이드레터 | Side letter | 특정 LP에게만 주는 개별 특약 |
 | 1차 결성 / 최종 결성 | First closing / Final closing | 최소 결성액 도달 시 1차 클로징 후 추가 모집, 마감 시 파이널 클로징 |
+| 출자지분율 | Percentage interest | 약정액(또는 좌수) ÷ 총액 — 캐피탈콜·배분·의결의 pro-rata 기준. 미국식 펀드의 몫 계산 축 |
+| 이퀄라이제이션 | Equalization | 후속 클로징 참여 LP가 기존 LP의 기납입분+이자를 정산해 형평을 맞추는 절차 |
 | 캐피탈 콜 / 수시납 | Capital call / Drawdown | 투자 집행 시점마다 약정 비율대로 납입 요청 (결성 시 전액 납입=일시납과 구분) |
 | 존속기간 | Fund term | 통상 7~10년 = 투자기간 + 회수기간 |
 | 투자기간 | Investment period | 신규 투자가 허용되는 기간(통상 3~4년) |
