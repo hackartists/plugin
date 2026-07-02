@@ -37,7 +37,8 @@
 | 투자기간 | Investment period | 신규 투자가 허용되는 기간(통상 3~4년) |
 | 운용보수 | Management fee | 통상 연 2% 내외. 투자기간엔 약정총액, 이후 투자잔액 기준으로 체감 |
 | 성과보수 | Carried interest (carry) | 초과이익의 GP 몫(통상 20%) |
-| 기준수익률 / 우선수익률 | Hurdle rate (preferred return) | carry 발생의 최저 수익률 문턱(통상 연 8% 수준, 국내 IRR 기준 다수) |
+| 목표수익률 | Target return (IRR) | GP가 PPM/IR에서 제시하는 성과 목표 — **구속력 없는** 계획 수치. hurdle(계약상 carry 문턱)과 다른 개념 |
+| 기준수익률 / 우선수익률 | Hurdle rate (preferred return) | carry 발생의 최저 수익률 문턱(통상 연 7~8%, 국내 IRR 기준 다수) — **LPA/규약에 명시되는 계약 조항**으로 워터폴 계산에 직접 사용. Hard(초과분에만 carry)/Soft(catch-up으로 전체 이익에 carry) 구분 |
 | 캐치업 | GP catch-up | hurdle 충족 후 GP가 carry 비율까지 따라잡는 배분 구간 |
 | 클로백 | Clawback | 조기 배분된 carry가 최종 정산 시 초과로 판명되면 GP가 반환하는 조항 |
 | 배분 순서 | Distribution waterfall | 원금 → hurdle → catch-up → carry 순의 회수금 배분 구조 (European=펀드 전체 기준 / American=딜별 기준) |
