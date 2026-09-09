@@ -21,7 +21,7 @@ description: Use BEFORE building any mock/mockup/목업/화면 시안/wireframe/
 
 1. **프레임워크 탐지** — 나중 mock 개발에 쓸 스택 확인:
    - `Cargo.toml` 에 `dioxus` → Dioxus (RSX). `dioxus` 스킬 연계.
-   - `package.json` 의 `react` / `vue` / `next` / `svelte` → 해당 프레임워크. `frontend-design` 스킬 연계.
+   - `package.json` 의 `react` / `vue` / `next` / `svelte` → 해당 프레임워크. UI 톤은 `refactoring-ui` 스킬 연계.
    - 없으면 HTML/CSS 로 폴백.
 2. **라우터·페이지 탐색** — 기존 페이지/라우트를 grep 해서 엔트리·페이지 후보의 근거를 만든다:
    - Dioxus: `Route`, `#[route(`, `Router`, `rsx!` 를 grep.
@@ -107,7 +107,7 @@ B-2 문제에 대응하는 해결안을 구체 후보로 제시 (예: "상단에
 확정 스펙에 근거해 **Step 0 에서 탐지한 프레임워크로 프론트 코드에 직접** mock 을 만든다.
 
 - Dioxus → `dioxus` 스킬 규칙대로 RSX 컴포넌트/라우트.
-- React·Vue 등 → `frontend-design` 스킬로 해당 프레임워크 컴포넌트.
+- React·Vue 등 → 해당 프레임워크 컴포넌트. 스타일 규칙은 `refactoring-ui` 스킬.
 - 프레임워크 없음 → HTML/CSS 폴백.
 
 mock 은 확정된 대상 고객·정보·니즈를 화면에 실제로 반영해야 한다 (니즈를 이루게 하는 정보 위계·액션이 보이도록).

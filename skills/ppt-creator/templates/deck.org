@@ -1,0 +1,80 @@
+# Deck template for the ppt-creator skill.
+# Replace <TITLE> <SUBTITLE> <AUTHOR> <EMAIL> <DATE> <INSTITUTE> <KEYWORDS> <SLIDENOTE>,
+# and <STY_PATH> with the absolute path of hackartist-new.sty without its extension
+# (LaTeX does not expand ~). Set <LEFTEND>/<RIGHTSTART> so the TOC splits evenly.
+# Keep the phase 1 brief in the block below; it is a comment and never exports.
+
+#+TITLE:     <TITLE>
+#+SUBTITLE:  <SUBTITLE>
+#+AUTHOR:    <AUTHOR>
+#+EMAIL:     <EMAIL>
+#+DATE:      <DATE>
+
+#+DESCRIPTION:
+#+KEYWORDS: <KEYWORDS>
+#+LANGUAGE:  en
+#+OPTIONS:   num:t toc:nil ::t |:t ^:{} -:t f:t *:t <:t
+#+OPTIONS:   tex:t d:nil todo:t pri:nil tags:nil
+#+OPTIONS:   timestamp:t
+
+#+SELECT_TAGS: export
+#+EXCLUDE_TAGS: noexport
+
+#+PROPERTY: header-args :eval never-export
+#+startup: beamer
+#+BEAMER_CLASS: beamer
+#+LATEX_COMPILER: xelatex
+#+LATEX_CLASS_OPTIONS: [t,9pt,aspectratio=169]
+#+BIND: org-beamer-frame-default-options "allowframebreaks=1,hatight"
+
+#+COLUMNS: %20ITEM %13BEAMER_env(Env) %6BEAMER_envargs(Args) %4BEAMER_col(Col) %7BEAMER_extra(Extra)
+
+#+OPTIONS: H:3
+
+#+LATEX_HEADER: \newcommand{\leftendsection}{<LEFTEND>}
+#+LATEX_HEADER: \newcommand{\rightstartsection}{<RIGHTSTART>}
+
+#+LATEX_HEADER: \usepackage{<STY_PATH>}
+
+#+LATEX_HEADER: \institute{<INSTITUTE>}
+#+LATEX_HEADER: \setslidenote{<SLIDENOTE>}
+#+LATEX_HEADER: \setlength{\emergencystretch}{3em}
+#+LATEX_HEADER: \setbeamerfont{normal text}{size=\scriptsize,parent=pretendard}
+#+LATEX_HEADER: \setbeamerfont{block body}{size=\scriptsize}
+#+LATEX_HEADER: \setbeamerfont{block title}{size=\scriptsize,series=\bfseries}
+#+LATEX_HEADER: \setbeamerfont{itemize/enumerate body}{size=\scriptsize}
+#+LATEX_HEADER: \setbeamerfont{itemize/enumerate subbody}{size=\scriptsize}
+#+LATEX_HEADER: \setbeamerfont{itemize/enumerate subsubbody}{size=\scriptsize}
+
+# hatight: frame option tightening list spacing, emitted on every frame by the BIND above
+#+LATEX_HEADER: \makeatletter
+#+LATEX_HEADER: \define@key{beamerframe}{hatight}[]{\def\beamer@cramped{\itemsep2pt\topsep1pt\parsep0pt\relax}}
+#+LATEX_HEADER: \makeatother
+#+LATEX_HEADER: \addtobeamertemplate{block begin}{\vspace{-1pt}}{}
+#+LATEX_HEADER: \addtobeamertemplate{block end}{}{\vspace{-2pt}}
+#+LATEX_HEADER: \usetikzlibrary{fit,arrows.meta,positioning,calc}
+
+# L: m{} rather than p{}, which top-aligns and leaves one-line cells sitting high
+#+LATEX_HEADER: \newcolumntype{L}[1]{>{\raggedright\arraybackslash}m{#1}}
+#+LATEX_HEADER: \newcommand{\hatab}{\scriptsize\arrayrulecolor{ha-rule}\setlength{\tabcolsep}{4pt}\renewcommand{\arraystretch}{1.15}}
+#+LATEX_HEADER: \newenvironment{hatable}[1]{\begingroup\hatab\begin{tabular}{#1}}{\end{tabular}\endgroup}
+#+LATEX_HEADER: \long\def\hacallout#1{\par\vspace{0.35em}\begin{center}\scriptsize\colorbox{ha-tint}{\parbox{0.95\textwidth}{#1}}\end{center}}
+#+LATEX_HEADER: \newcommand{\haok}{{\color{ha-green}\bfseries 가능}\hspace{0.4em}}
+#+LATEX_HEADER: \newcommand{\hacond}{{\color{ha-amber}\bfseries 조건부}\hspace{0.4em}}
+#+LATEX_HEADER: \newcommand{\hatbd}{{\color{ha-red}\bfseries 미확정}\hspace{0.4em}}
+
+#+BEAMER: \begin{frame}<beamer>\frametitle{Table of Contents}\begin{columns}[t]
+#+BEAMER: \begin{column}{.5\textwidth}\tableofcontents[sections={1-\leftendsection}]\end{column}
+#+BEAMER: \begin{column}{.5\textwidth}\tableofcontents[sections={\rightstartsection-9}]\end{column}
+#+BEAMER: \end{columns}\end{frame}
+
+# BRIEF (phase 1)
+# 청중:
+# 목적:
+# 시간 / 장수:
+# 반드시 포함:
+# 제약:
+
+* <SECTION 1>
+#+BEAMER: \subsection{<SUBSECTION>}
+*** <FRAME TITLE>                                                    [img|tikz|formula|table]
