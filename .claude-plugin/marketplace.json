@@ -56,7 +56,7 @@
     {
       "name": "hackartist",
       "description": "Core skills library for Claude Code by Hackartist ",
-      "version": "7.0.0",
+      "version": "7.1.0",
       "source": "./",
       "author": {
         "name": "hackartist",

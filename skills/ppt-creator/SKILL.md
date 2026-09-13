@@ -102,6 +102,20 @@ AskUserQuestion 으로 묻는다. 자유 대화로 흘리지 말고 선택지를
 3. 수식
 4. 표 또는 block
 
+**마크업 규칙** — 본문은 org 로 쓴다. `#+LATEX:` 로 감싸면 org 마크업이 죽고 중첩 중괄호가
+깨지므로, org 로 표현되지 않는 것(tikz · 수식)만 `#+BEGIN_EXPORT latex` 로 뺀다.
+
+| 쓸 것 | 나오는 것 |
+|---|---|
+| `=핵심 개념=` | `\hakey{}` — 키컬러 |
+| `*강조*` | `\alert{}` — 빨강 굵게 (`\haemph{}` 와 동일) |
+| `#+BEGIN_callout` … `#+END_callout` | 결론 상자. 둘째 줄은 `\calloutnote` |
+| `#+BEGIN_slogan` … `#+END_slogan` | 프레임 하나 = 문장 하나, 세로 중앙 |
+
+`callout` `slogan` `\calloutnote` 는 스타일(`hackartist-new.sty`)이 제공한다. 덱 안에
+`\hacallout` `\footbox` 를 새로 정의하지 않는다. inline code 를 `\hakey{}` 로 바꾸는
+`#+BIND` 는 템플릿에 이미 들어 있다.
+
 **문장 규칙**
 
 - 키워드 단위로 쓴다. 완결된 문장이 아니라 명사구.

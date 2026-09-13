@@ -26,6 +26,7 @@
 #+LATEX_COMPILER: xelatex
 #+LATEX_CLASS_OPTIONS: [t,9pt,aspectratio=169]
 #+BIND: org-beamer-frame-default-options "allowframebreaks=1,hatight"
+#+BIND: org-latex-text-markup-alist ((bold . "\\textbf{%s}") (code . "\\hakey{%s}") (italic . "\\emph{%s}") (strike-through . "\\sout{%s}") (underline . "\\uline{%s}") (verbatim . "\\hakey{%s}"))
 
 #+COLUMNS: %20ITEM %13BEAMER_env(Env) %6BEAMER_envargs(Args) %4BEAMER_col(Col) %7BEAMER_extra(Extra)
 
@@ -58,7 +59,6 @@
 #+LATEX_HEADER: \newcolumntype{L}[1]{>{\raggedright\arraybackslash}m{#1}}
 #+LATEX_HEADER: \newcommand{\hatab}{\scriptsize\arrayrulecolor{ha-rule}\setlength{\tabcolsep}{4pt}\renewcommand{\arraystretch}{1.15}}
 #+LATEX_HEADER: \newenvironment{hatable}[1]{\begingroup\hatab\begin{tabular}{#1}}{\end{tabular}\endgroup}
-#+LATEX_HEADER: \long\def\hacallout#1{\par\vspace{0.35em}\begin{center}\scriptsize\colorbox{ha-tint}{\parbox{0.95\textwidth}{#1}}\end{center}}
 #+LATEX_HEADER: \newcommand{\haok}{{\color{ha-green}\bfseries 가능}\hspace{0.4em}}
 #+LATEX_HEADER: \newcommand{\hacond}{{\color{ha-amber}\bfseries 조건부}\hspace{0.4em}}
 #+LATEX_HEADER: \newcommand{\hatbd}{{\color{ha-red}\bfseries 미확정}\hspace{0.4em}}
