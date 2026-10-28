@@ -19,6 +19,7 @@ Miner가 "업무 추가해놔"라고 하면 biyard/workflows의 `/api/v1/tasks` 
    - Due는 타인 할당 업무도 Miner가 따로 말하지 않으면 **내일**(`--due tomorrow`). 등록·Thread 수정 후 `slackLists.items.list`로 해당 row의 Due(`Col02`)가 실제로 채워져 있는지 확인하고, 비어 있으면 `slackLists.items.update`로 다시 채운다 (2026-10-21: 등록 시 OK였던 Due가 Thread 교체 후 비어 있던 사례 있음, 원인: Thread 셀을 update하면 같은 호출에 Due를 같이 넣어도 Due가 비워짐 — Thread 교체 후 Due만 담은 `slackLists.items.update`를 **별도 호출**로 한 번 더 보내고 확인).
    - 이미 기존 스레드로 등록해버린 경우 수정법: 새 루트 메시지를 올린 뒤 `PATCH /api/v1/tasks/{task_id}` `{"slack_link": <새 permalink>}` + `slackLists.items.update`로 해당 row의 Thread 컬럼(`THREAD_COLUMN`)을 새 permalink로 교체 (`pm_notes_register` 모듈의 `load_env`/`http_json`/상수 재사용).
 6. task를 `done`으로 처리한 뒤(PATCH 또는 `pr_merge_finish.py`) `self-skilling` 스킬을 로드해 회고한다.
+   - `pr_merge_finish.py`의 task 자동조회는 task 내용에 PR URL이 있어야 매칭된다. 슬랙 스레드로 등록하고 PR을 나중에 만든 업무는 `0 tasks match`로 FAIL 나므로 `--task-id`/`--row-id`(등록 출력의 `task_id`, `row_id`)를 넘긴다.
    - PR이 없는 업무 완료: workflows PATCH만으로는 Slack List 행이 Done이 안 된다. `~/.hermes/scripts`에서 `pr_merge_finish`를 import해 `Ctx(SimpleNamespace(repo=<아무 org/repo>, pr=0, task_id=..., row_id=..., list_id=pmn.DEFAULT_LIST_ID, clone=None, skip_merge=True, force=False, dry_run=False))`로 `step_task`, `step_list_row`만 호출하고, 끝나면 `ctx.state_path` 캐시 파일을 지운다. task_id/row_id는 `pm_notes_register.py` 출력에 있다.
 
 ## Due (Miner PM Notes 리스트 Due 컬럼 `Col02`)
