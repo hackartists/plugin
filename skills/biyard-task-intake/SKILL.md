@@ -5,14 +5,28 @@ description: "\uc0ac\uc6a9\uc790(Miner)\uac00 \"\uc5c5\ubb34 \ucd94\uac00\ud574\
 
 # Biyard 업무 접수 (Task Intake)
 
-Miner가 "업무 추가해놔"라고 하면 biyard/workflows의 `/api/v1/tasks` API로 **바로 접수**한다. 담당자·일정 없이 제목/설명/Slack 링크만으로 backlog에 넣는 것이 기본 동작이다.
+Miner가 "업무 추가해놔"라고 하면 biyard/workflows의 `/api/v1/tasks` API로 **바로 접수**한다. `assignee`는 기본적으로 Miner(Slack user id `U03QHDMCVB2`)로 채우고, 일정(`scheduled_at`)만 비운 채 backlog/assigned 상태로 넣는 것이 기본 동작이다.
 
 ## 하드 룰
 
-1. **처음 접수할 때는 `assignee`와 `scheduled_at`을 절대 넣지 않는다.** 사용자가 "이거 누구한테 시켜" 등으로 명시적으로 담당자·일정을 지정하지 않는 한, 제목(title)·설명(content)·Slack 링크(slack_link)만 채운다.
-2. 담당자/일정은 나중에 별도 요청이 있을 때 `PATCH /api/v1/tasks/{task_id}`로 채운다.
+1. **처음 접수할 때 `assignee`는 기본값으로 Miner(`U03QHDMCVB2`)를 넣는다.** 사용자가 "이거 누구한테 시켜"처럼 다른 담당자를 명시하면 그 사람의 Slack id로 바꾸고, `assignee`를 명시적으로 비우라고 하면 그때만 생략한다. `scheduled_at`은 별도 언급이 없는 한 넣지 않는다.
+2. 일정(`scheduled_at`)은 나중에 별도 요청이 있을 때 `PATCH /api/v1/tasks/{task_id}`로 채운다. 담당자를 바꾸고 싶을 때도 같은 PATCH 경로를 쓴다.
 3. API 키는 대화에 노출하지 않는다 — `$WORKFLOWS_AGENT_API_KEY` 환경변수로만 다룬다.
 4. `stage`는 `planning` 또는 `dev` 둘 중 하나만 유효하다. 애매하면 기본값 `dev`를 쓰고, 필요하면 사용자에게 확인한다.
+5. **Miner가 아닌 다른 사용자에게 업무를 등록할 때는 새 스레드로 분리한다** (Miner 지시, 2026-10-20). 같은 채널에 `~/.hermes/scripts/slack_thread_post.py --channel <CH> --text "*[업무] <제목>* <@담당자> 이 스레드가 이 업무의 소통 스레드야. (원 논의: <permalink>) • 범위/항목..."`로 루트 메시지를 올리고, 그 새 ts로 `pm_notes_register.py --assignee <담당자 Slack id> --channel <CH> --ts <새 ts>` 등록. 담당자 Slack id는 원 메시지 텍스트의 `<@U...>`에서 얻는다(conversations.replies). 원 스레드에는 새 스레드 링크 + task_id만 짧게 보고.
+   - **예외**: 원 스레드 자체가 그 업무 할당용이면(Miner가 루트 메시지에서 담당자를 @멘션해 업무를 지시하고 같은 메시지/스레드에서 "업무등록해줘") 새 스레드를 만들지 말고 **원 스레드 ts로 바로 등록**한다 (Miner 지시, 2026-10-21).
+   - 실수로 분리 스레드를 만들었다면: task PATCH `slack_link` + list Thread 컬럼을 원 permalink로 교체하고, 봇이 올린 분리 루트 메시지는 `chat.delete`로 지운다. PATCH는 `content`를 무시하므로 content 안의 옛 링크는 고칠 수 없다.
+   - Due는 타인 할당 업무도 Miner가 따로 말하지 않으면 **내일**(`--due tomorrow`). 등록·Thread 수정 후 `slackLists.items.list`로 해당 row의 Due(`Col02`)가 실제로 채워져 있는지 확인하고, 비어 있으면 `slackLists.items.update`로 다시 채운다 (2026-10-21: 등록 시 OK였던 Due가 Thread 교체 후 비어 있던 사례 있음, 원인: Thread 셀을 update하면 같은 호출에 Due를 같이 넣어도 Due가 비워짐 — Thread 교체 후 Due만 담은 `slackLists.items.update`를 **별도 호출**로 한 번 더 보내고 확인).
+   - 이미 기존 스레드로 등록해버린 경우 수정법: 새 루트 메시지를 올린 뒤 `PATCH /api/v1/tasks/{task_id}` `{"slack_link": <새 permalink>}` + `slackLists.items.update`로 해당 row의 Thread 컬럼(`THREAD_COLUMN`)을 새 permalink로 교체 (`pm_notes_register` 모듈의 `load_env`/`http_json`/상수 재사용).
+6. task를 `done`으로 처리한 뒤(PATCH 또는 `pr_merge_finish.py`) `self-skilling` 스킬을 로드해 회고한다.
+
+## Due (Miner PM Notes 리스트 Due 컬럼 `Col02`)
+
+`~/.hermes/scripts/pm_notes_register.py --due ...`로 지정 (KST 기준):
+- 바로 작업 시작하는 업무 → 다음날 (`--due tomorrow`, 기본값)
+- 장기 업무 → 한 달 뒤 (`--due month`)
+- 백로그 → 비움 (`--due none`)
+- 특정 날짜 → `--due YYYY-MM-DD`
 
 ## 준비물
 
@@ -27,9 +41,10 @@ source <(grep -E '^WORKFLOWS_(AGENT_API_KEY|API_BASE_URL)=' ~/.hermes/.env)
 
 ## 접수 절차 (업무 추가해놔)
 
-1. 사용자 메시지에서 **제목**, **설명**(맥락/배경), 그리고 있으면 **Slack 대화 링크**를 뽑아낸다. 부족하면 짧게 되묻는다 — 단, 담당자/일정은 절대 묻지 않는다.
+1. 사용자 메시지에서 **제목**, **설명**(맥락/배경), 그리고 있으면 **Slack 대화 링크**를 뽑아낸다. 부족하면 짧게 되묻는다 — 단, 담당자는 기본값(Miner)이 있으므로 묻지 않고, 일정도 절대 묻지 않는다.
 2. `stage`를 정한다 — 특별한 언급 없으면 `dev` (바로 개발 착수 가정). 기획 단계로 명시되면 `planning`.
-3. 아래처럼 생성한다:
+3. `assignee`는 기본값 `U03QHDMCVB2`(Miner)를 넣는다. 사용자가 다른 사람을 지정했으면 그 Slack id로 교체한다.
+4. 아래처럼 생성한다:
 
 ```bash
 source <(grep -E '^WORKFLOWS_(AGENT_API_KEY|API_BASE_URL)=' ~/.hermes/.env)
@@ -41,12 +56,13 @@ curl -s -X POST "${WORKFLOWS_API_BASE_URL}/api/v1/tasks" \
     "title": "<제목>",
     "content": "<설명>",
     "stage": "dev",
+    "assignee": "U03QHDMCVB2",
     "slack_link": "<슬랙 링크 있으면, 없으면 이 키 자체를 생략>"
   }'
 ```
 
-4. 응답 예시: `{"idea_id":"...","task_id":"...","schedule_id":null}` (201). `schedule_id`가 `null`인 것이 정상 — 일정을 안 넣었으니 당연하다.
-5. 사용자에게 `task_id`와 함께 접수 완료를 보고한다. "담당자·일정은 아직 비워뒀고, 필요하면 말씀해주시면 채우겠습니다" 같은 문구를 덧붙인다.
+5. 응답 예시: `{"idea_id":"...","task_id":"...","schedule_id":null}` (201). `schedule_id`가 `null`인 것이 정상 — 일정을 안 넣었으니 당연하다.
+6. 사용자에게 `task_id`와 함께 접수 완료를 보고한다. "담당자는 Miner로 등록했고, 일정은 아직 비워뒀습니다. 필요하면 말씀해주시면 채우겠습니다" 같은 문구를 덧붙인다.
 
 ## 나중에 담당자/일정 채우기 (별도 요청 시에만)
 
