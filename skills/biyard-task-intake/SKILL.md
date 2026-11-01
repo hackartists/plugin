@@ -27,6 +27,8 @@ Miner가 "업무 추가해놔"라고 하면 biyard/workflows의 `/api/v1/tasks` 
 `~/.hermes/scripts/pm_notes_register.py --due ...`로 지정 (KST 기준):
 - 바로 작업 시작하는 업무 → 다음날 (`--due tomorrow`, 기본값)
 - 장기 업무 → 한 달 뒤 (`--due month`)
+- "N주일 업무" → 오늘+N×7일 날짜 (`--due YYYY-MM-DD`, 스크립트에 week 옵션 없음)
+- "<서비스> PM으로 등록" → 기획 업무: `--stage planning`, 제목 앞에 `[<서비스> PM]`
 - 백로그 → 비움 (`--due none`)
 - 특정 날짜 → `--due YYYY-MM-DD`
 
