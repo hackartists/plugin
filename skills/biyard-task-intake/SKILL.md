@@ -22,6 +22,15 @@ Miner가 "업무 추가해놔"라고 하면 biyard/workflows의 `/api/v1/tasks` 
    - `pr_merge_finish.py`의 task 자동조회는 task 내용에 PR URL이 있어야 매칭된다. 슬랙 스레드로 등록하고 PR을 나중에 만든 업무는 `0 tasks match`로 FAIL 나므로 `--task-id`/`--row-id`(등록 출력의 `task_id`, `row_id`)를 넘긴다.
    - PR이 없는 업무 완료: workflows PATCH만으로는 Slack List 행이 Done이 안 된다. `~/.hermes/scripts`에서 `pr_merge_finish`를 import해 `Ctx(SimpleNamespace(repo=<아무 org/repo>, pr=0, task_id=..., row_id=..., list_id=pmn.DEFAULT_LIST_ID, clone=None, skip_merge=True, force=False, dry_run=False))`로 `apis = pmf.Apis()`를 만든 뒤 `step_task(ctx, apis)`, `step_list_row(ctx, apis)`만 호출하고(두 함수 모두 `apis` 인자 필수), 끝나면 `ctx.state_path` 캐시 파일을 지운다. task_id/row_id는 `pm_notes_register.py` 출력에 있다. 출력이 없으면 `GET /api/v1/tasks?status=assigned` 결과에서 스레드 ts(`p<ts숫자>`)로 task_id를 찾고, `row_id=None`으로 두면 `find_row`가 task 제목/Thread로 행을 찾는다. status 목록 조회는 느리니(3개 루프가 180s 초과) status 하나씩 timeout을 넉넉히 잡는다.
 
+## PRD 캔버스 / Figma 링크 (2026-11-05 Miner 지시)
+
+업무 하나에 업무 스레드(Thread) · PRD(Slack canvas) · Figma가 모두 연결돼야 한다. **캔버스나 Figma 파일/페이지를 만든 즉시** 링크를 등록한다. 나중에 몰아서 하지 않는다.
+- 기존 업무: `python3 ~/.hermes/scripts/pm_notes_link.py --task-id <task_id> --canvas <캔버스 permalink 또는 F…> [--figma <Figma URL, 페이지 root node-id>]` (`--row-id Rec…`도 가능, `""`는 지움). DB(`canvas_link`/`figma_link` PATCH)와 리스트 `PRD`(`Col0CF5FU0BGR`)·`Figma(UI Design)`(`Col0CF3DUB27L`) 셀만 갱신하고, Due가 비워지면 별도 호출로 복원·확인까지 한다.
+- 등록 시점에 이미 있으면 `pm_notes_register.py ... --canvas <link> --figma <url>`.
+- 리스트 손편집이 기준이다. 서버는 `GET /api/v1/tasks?canvas=F…` 조회 때 리스트 셀을 DB로 당겨온다.
+- PRD 캔버스 코멘트에서 Hermes가 멘션되면 `prd_canvas_context` 플러그인(`~/.hermes/plugins/prd_canvas_context`)이 캔버스→업무를 찾아 업무 스레드 맥락을 주입하고, 답변 한 줄을 업무 스레드에 미러링한다. 링크가 없으면 일반 답변이 되므로 링크 등록을 빠뜨리지 않는다.
+- biyard/workflows#22 배포 전에는 서버가 `canvas_link`를 모른다(스크립트가 경고하고 리스트 셀만 씀). 배포 후 같은 명령을 다시 돌리면 DB도 채워진다.
+
 ## Due (Miner PM Notes 리스트 Due 컬럼 `Col02`)
 
 `~/.hermes/scripts/pm_notes_register.py --due ...`로 지정 (KST 기준):
@@ -83,10 +92,10 @@ curl -s -X PATCH "${WORKFLOWS_API_BASE_URL}/api/v1/tasks/${TASK_ID}" \
 
 | 메서드 & 경로 | 용도 |
 | --- | --- |
-| `POST /api/v1/tasks` | 새 업무 생성. `title`,`content`,`stage` 필수; `assignee`,`scheduled_at`,`slack_link` 선택. `scheduled_at`은 `assignee` 없이는 400. |
-| `GET /api/v1/tasks?status=backlog` | 목록 조회 (status: backlog/assigned/scheduled/done/closed) |
-| `GET /api/v1/tasks/{task_id}` | 단건 조회 |
-| `PATCH /api/v1/tasks/{task_id}` | `status`/`assignee`/`scheduled_at` 부분 수정 |
+| `POST /api/v1/tasks` | 새 업무 생성. `title`,`content`,`stage` 필수; `assignee`,`scheduled_at`,`slack_link`,`canvas_link`,`figma_link` 선택. `scheduled_at`은 `assignee` 없이는 400. |
+| `GET /api/v1/tasks?status=backlog` | 목록 조회 (status: backlog/assigned/scheduled/done/closed). `?canvas=F…`(또는 캔버스 링크)는 그 캔버스가 PRD인 업무 |
+| `GET /api/v1/tasks/{task_id}` | 단건 조회 (`slack_link`, `canvas_link`, `figma_link` 포함) |
+| `PATCH /api/v1/tasks/{task_id}` | `status`/`assignee`/`scheduled_at`/`slack_link`/`canvas_link`/`figma_link` 부분 수정 (링크는 빈 문자열이면 지움) |
 | `DELETE /api/v1/tasks/{task_id}` | 강제 종료 (idea도 rejected로 정리) |
 
 인증 실패 시 401, `AGENT_API_KEY`가 배포에 미설정이면 전체 라우트가 404.
