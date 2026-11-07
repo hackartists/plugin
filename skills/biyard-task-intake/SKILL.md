@@ -22,14 +22,38 @@ Miner가 "업무 추가해놔"라고 하면 biyard/workflows의 `/api/v1/tasks` 
    - `pr_merge_finish.py`의 task 자동조회는 task 내용에 PR URL이 있어야 매칭된다. 슬랙 스레드로 등록하고 PR을 나중에 만든 업무는 `0 tasks match`로 FAIL 나므로 `--task-id`/`--row-id`(등록 출력의 `task_id`, `row_id`)를 넘긴다.
    - PR이 없는 업무 완료: workflows PATCH만으로는 Slack List 행이 Done이 안 된다. `~/.hermes/scripts`에서 `pr_merge_finish`를 import해 `Ctx(SimpleNamespace(repo=<아무 org/repo>, pr=0, task_id=..., row_id=..., list_id=pmn.DEFAULT_LIST_ID, clone=None, skip_merge=True, force=False, dry_run=False))`로 `apis = pmf.Apis()`를 만든 뒤 `step_task(ctx, apis)`, `step_list_row(ctx, apis)`만 호출하고(두 함수 모두 `apis` 인자 필수), 끝나면 `ctx.state_path` 캐시 파일을 지운다. task_id/row_id는 `pm_notes_register.py` 출력에 있다. 출력이 없으면 `GET /api/v1/tasks?status=assigned` 결과에서 스레드 ts(`p<ts숫자>`)로 task_id를 찾고, `row_id=None`으로 두면 `find_row`가 task 제목/Thread로 행을 찾는다. status 목록 조회는 느리니(3개 루프가 180s 초과) status 하나씩 timeout을 넉넉히 잡는다.
 
-## PRD 캔버스 / Figma 링크 (2026-11-05 Miner 지시)
+## PRD 캔버스 / Plan 캔버스 / Figma 링크 (2026-11-05, 2026-11-07 Miner 지시)
 
-업무 하나에 업무 스레드(Thread) · PRD(Slack canvas) · Figma가 모두 연결돼야 한다. **캔버스나 Figma 파일/페이지를 만든 즉시** 링크를 등록한다. 나중에 몰아서 하지 않는다.
-- 기존 업무: `python3 ~/.hermes/scripts/pm_notes_link.py --task-id <task_id> --canvas <캔버스 permalink 또는 F…> [--figma <Figma URL, 페이지 root node-id>]` (`--row-id Rec…`도 가능, `""`는 지움). DB(`canvas_link`/`figma_link` PATCH)와 리스트 `PRD`(`Col0CF5FU0BGR`)·`Figma(UI Design)`(`Col0CF3DUB27L`) 셀만 갱신하고, Due가 비워지면 별도 호출로 복원·확인까지 한다.
-- 등록 시점에 이미 있으면 `pm_notes_register.py ... --canvas <link> --figma <url>`.
-- 리스트 손편집이 기준이다. 서버는 `GET /api/v1/tasks?canvas=F…` 조회 때 리스트 셀을 DB로 당겨온다.
-- PRD 캔버스 코멘트에서 Hermes가 멘션되면 `prd_canvas_context` 플러그인(`~/.hermes/plugins/prd_canvas_context`)이 캔버스→업무를 찾아 업무 스레드 맥락을 주입하고, 답변 한 줄을 업무 스레드에 미러링한다. 링크가 없으면 일반 답변이 되므로 링크 등록을 빠뜨리지 않는다.
-- biyard/workflows#22 배포 전에는 서버가 `canvas_link`를 모른다(스크립트가 경고하고 리스트 셀만 씀). 배포 후 같은 명령을 다시 돌리면 DB도 채워진다.
+업무 하나에 업무 스레드(Thread) · PRD(Slack canvas) · **구현 계획(Plan, Slack canvas)** · Figma가 모두 연결돼야 한다. **캔버스나 Figma 파일/페이지를 만든 즉시** 링크를 등록한다. 나중에 몰아서 하지 않는다.
+
+- PRD = "무엇을 왜 만드는가", Plan = "어떻게 만드는가". 서로 다른 캔버스이고 다른 컬럼이다.
+- 기존 업무: `python3 ~/.hermes/scripts/pm_notes_link.py --task-id <task_id> [--canvas <PRD 캔버스 permalink 또는 F…>] [--plan <Plan 캔버스 permalink 또는 F…>] [--figma <Figma URL, 페이지 root node-id>]` (`--row-id Rec…`도 가능, `""`는 지움). DB(`canvas_link`/`plan_link`/`figma_link` PATCH)와 리스트 `PRD`(`Col0CF5FU0BGR`)·`Plan`(`Col0CGLV9LM2L`)·`Figma(UI Design)`(`Col0CF3DUB27L`) 셀만 갱신하고, Due가 비워지면 별도 호출로 복원·확인까지 한다.
+- 등록 시점에 이미 있으면 `pm_notes_register.py ... --canvas <link> --plan <link> --figma <url>`.
+- 리스트 손편집이 기준이다. 서버는 `GET /api/v1/tasks?canvas=F…` / `?plan=F…` 조회 때 리스트 셀을 DB로 당겨온다. 두 쿼리를 같이 주면 400.
+- PRD/Plan 캔버스 코멘트에서 Hermes가 멘션되면 `prd_canvas_context` 플러그인(`~/.hermes/plugins/prd_canvas_context`)이 캔버스→업무를 찾아 업무 스레드 맥락을 주입하고(어느 종류의 캔버스인지 명시), 답변 한 줄을 업무 스레드에 미러링한다. 링크가 없으면 일반 답변이 되므로 링크 등록을 빠뜨리지 않는다.
+- `canvas_link`/`figma_link`는 biyard/workflows#22, `plan_link`/`?plan=`은 #23 배포 후에만 DB에 들어간다. 미배포면 스크립트가 경고하고 리스트 셀만 쓴다 — 배포 후 같은 명령을 다시 돌리면 DB도 채워진다.
+
+## 구현 계획(Plan) 캔버스 작성 규칙 (2026-11-07 Miner 지시)
+
+구현 계획이 나오면 **파일이 아니라 Slack Canvas로 쓰고 바로 링크를 건다.** 점검 가능한 규칙:
+
+1. 구현 계획을 만들면 Slack Canvas로 작성한다 (`canvases.create` 또는 업무 스레드에서 캔버스 생성). 계획을 채팅 메시지로만 남기지 않는다.
+2. 만든 즉시 `pm_notes_link.py --task-id <task_id> --plan <캔버스 링크>`로 등록한다. 다음 작업으로 넘어가기 전에 등록한다.
+3. 등록 후 출력의 `"plan"` 배열과 `db: … plan_link=…`가 비어 있지 않은지 확인한다. 비어 있으면 실패다.
+4. 계획 캔버스는 최소한 ① 단계별 작업, ② 변경 파일, ③ **테스트 항목 → e2e 매핑표**(아래), ④ 검증 방법을 담는다.
+
+## 테스트 설계 규칙: PRD의 테스트 항목 → Plan의 e2e (2026-11-07 Miner 지시)
+
+1. **PRD를 쓸 때 테스트 항목도 같이 설계해 PRD에 넣는다.** 각 항목은 시나리오 + 기대결과이고, 수용 기준(acceptance criteria)과 1:1로 추적 가능해야 한다 — 수용 기준 하나에 테스트 항목이 하나도 없으면 PRD가 미완성이다.
+2. PRD의 테스트 항목에는 번호를 붙인다(T1, T2, …). 구현 계획이 그 번호로 참조한다.
+3. **구현 계획 캔버스에는 그 테스트 항목을 각각 e2e로 개발하는 작업이 반드시 들어간다.** 어느 e2e 테스트가 어느 항목을 커버하는지 매핑표를 넣는다:
+
+   | PRD 테스트 항목 | e2e 테스트 (파일::이름) | 커버하는 수용 기준 |
+   | --- | --- | --- |
+   | T1 … | `e2e/tests/x.spec.ts::…` | AC-1 |
+
+4. 구현 단계마다 해당 e2e **작성과 실행**을 단계 안에 넣는다. "나중에 테스트 추가"는 계획으로 인정하지 않는다.
+5. 매핑표에 빈 칸(항목은 있는데 e2e가 없음)이 있으면 그 이유를 계획에 한 줄로 적는다 — 이유가 없으면 e2e를 추가한다.
 
 ## Due (Miner PM Notes 리스트 Due 컬럼 `Col02`)
 
@@ -92,10 +116,10 @@ curl -s -X PATCH "${WORKFLOWS_API_BASE_URL}/api/v1/tasks/${TASK_ID}" \
 
 | 메서드 & 경로 | 용도 |
 | --- | --- |
-| `POST /api/v1/tasks` | 새 업무 생성. `title`,`content`,`stage` 필수; `assignee`,`scheduled_at`,`slack_link`,`canvas_link`,`figma_link` 선택. `scheduled_at`은 `assignee` 없이는 400. |
-| `GET /api/v1/tasks?status=backlog` | 목록 조회 (status: backlog/assigned/scheduled/done/closed). `?canvas=F…`(또는 캔버스 링크)는 그 캔버스가 PRD인 업무 |
-| `GET /api/v1/tasks/{task_id}` | 단건 조회 (`slack_link`, `canvas_link`, `figma_link` 포함) |
-| `PATCH /api/v1/tasks/{task_id}` | `status`/`assignee`/`scheduled_at`/`slack_link`/`canvas_link`/`figma_link` 부분 수정 (링크는 빈 문자열이면 지움) |
+| `POST /api/v1/tasks` | 새 업무 생성. `title`,`content`,`stage` 필수; `assignee`,`scheduled_at`,`slack_link`,`canvas_link`,`plan_link`,`figma_link` 선택. `scheduled_at`은 `assignee` 없이는 400. |
+| `GET /api/v1/tasks?status=backlog` | 목록 조회 (status: backlog/assigned/scheduled/done/closed). `?canvas=F…`(또는 캔버스 링크)는 그 캔버스가 PRD인 업무, `?plan=F…`는 그 캔버스가 구현 계획인 업무 (둘을 같이 주면 400) |
+| `GET /api/v1/tasks/{task_id}` | 단건 조회 (`slack_link`, `canvas_link`, `plan_link`, `figma_link` 포함) |
+| `PATCH /api/v1/tasks/{task_id}` | `status`/`assignee`/`scheduled_at`/`slack_link`/`canvas_link`/`plan_link`/`figma_link` 부분 수정 (링크는 빈 문자열이면 지움) |
 | `DELETE /api/v1/tasks/{task_id}` | 강제 종료 (idea도 rejected로 정리) |
 
 인증 실패 시 401, `AGENT_API_KEY`가 배포에 미설정이면 전체 라우트가 404.
